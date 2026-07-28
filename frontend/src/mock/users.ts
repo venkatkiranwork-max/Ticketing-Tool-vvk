@@ -1,0 +1,213 @@
+import type { User } from '@/types/api';
+
+export type WorkspaceRole =
+  | 'Super Admin'
+  | 'Admin'
+  | 'Project Manager'
+  | 'Team Lead'
+  | 'Member'
+  | 'Viewer'
+  | 'Guest';
+
+export type UserRole = WorkspaceRole;
+export type UserStatus = 'Active' | 'Inactive' | 'Suspended' | 'Locked';
+
+export type ScreenKey =
+  | 'dashboard'
+  | 'projects'
+  | 'issues'
+  | 'board'
+  | 'teams'
+  | 'users'
+  | 'reports'
+  | 'auditLogs'
+  | 'administration'
+  | 'notifications'
+  | 'profile'
+  | 'settings';
+
+export type FeaturePermissionKey =
+  | 'project_create'
+  | 'project_edit'
+  | 'project_delete'
+  | 'project_view'
+  | 'issue_create'
+  | 'issue_edit'
+  | 'issue_delete'
+  | 'issue_comment'
+  | 'issue_attach_files'
+  | 'user_create'
+  | 'user_delete'
+  | 'user_view';
+
+export interface MockUser {
+  id: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: WorkspaceRole;
+  team: string;
+  status: UserStatus;
+  avatarUrl: string;
+  department: string;
+  phone?: string;
+  location?: string;
+  lastLogin: string;
+  createdDate: string;
+  online: boolean;
+  activeProjectsCount: number;
+  completedTasksCount: number;
+  screens?: Partial<Record<ScreenKey, boolean>>;
+  permissions?: Partial<Record<FeaturePermissionKey, boolean>>;
+}
+
+export const DEFAULT_SUPER_ADMIN_SCREENS: Record<ScreenKey, boolean> = {
+  dashboard: true,
+  projects: true,
+  issues: true,
+  board: true,
+  teams: true,
+  users: true,
+  reports: true,
+  auditLogs: true,
+  administration: true,
+  notifications: true,
+  profile: true,
+  settings: true,
+};
+
+export const DEFAULT_MEMBER_SCREENS: Record<ScreenKey, boolean> = {
+  dashboard: true,
+  projects: true,
+  issues: true,
+  board: true,
+  teams: true,
+  users: true,
+  reports: true,
+  auditLogs: false,
+  administration: false,
+  notifications: true,
+  profile: true,
+  settings: true,
+};
+
+export const DEFAULT_FEATURE_PERMISSIONS: Record<FeaturePermissionKey, boolean> = {
+  project_create: true,
+  project_edit: true,
+  project_delete: false,
+  project_view: true,
+  issue_create: true,
+  issue_edit: true,
+  issue_delete: false,
+  issue_comment: true,
+  issue_attach_files: true,
+  user_create: false,
+  user_delete: false,
+  user_view: true,
+};
+
+export function toMockUser(user: User | null | undefined): MockUser {
+  if (!user) {
+    return mockUsers[0];
+  }
+  return {
+    id: user.id || user._id || 'usr-1',
+    employeeId: user.employeeId || 'EMP-1001',
+    firstName: user.firstName || 'Suresh',
+    lastName: user.lastName || 'Kumar',
+    email: user.email || 'suresh@gmail.com',
+    role: (user.role as WorkspaceRole) || 'Super Admin',
+    team: user.team || 'IT',
+    status: (user.status as UserStatus) || 'Active',
+    avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    department: user.department || 'IT',
+    phone: user.phone || '+91 98765 43210',
+    location: user.location || 'Bangalore, IN',
+    lastLogin: 'Today',
+    createdDate: '2024-01-10',
+    online: true,
+    activeProjectsCount: 1,
+    completedTasksCount: 45,
+    screens: (user.screens as any) || DEFAULT_SUPER_ADMIN_SCREENS,
+    permissions: (user.permissions as any) || DEFAULT_FEATURE_PERMISSIONS,
+  };
+}
+
+export const mockUsers: MockUser[] = [
+  {
+    id: 'usr-1',
+    employeeId: 'EMP-1001',
+    firstName: 'Suresh',
+    lastName: 'Kumar',
+    email: 'suresh@gmail.com',
+    role: 'Super Admin',
+    team: 'IT',
+    status: 'Active',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    department: 'IT',
+    phone: '+91 98765 43210',
+    location: 'Bangalore, IN',
+    lastLogin: 'Today',
+    createdDate: '2024-01-10',
+    online: true,
+    activeProjectsCount: 1,
+    completedTasksCount: 142,
+    screens: DEFAULT_SUPER_ADMIN_SCREENS,
+    permissions: {
+      ...DEFAULT_FEATURE_PERMISSIONS,
+      project_delete: true,
+      issue_delete: true,
+      user_create: true,
+      user_delete: true,
+    },
+  },
+  {
+    id: 'usr-2',
+    employeeId: 'EMP-1002',
+    firstName: 'Ravi',
+    lastName: 'Sharma',
+    email: 'ravi@gmail.com',
+    role: 'Admin',
+    team: 'UI/UX',
+    status: 'Active',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    department: 'UI/UX Design',
+    phone: '+91 98765 43211',
+    location: 'Mumbai, IN',
+    lastLogin: '1 hr ago',
+    createdDate: '2024-02-01',
+    online: true,
+    activeProjectsCount: 1,
+    completedTasksCount: 98,
+    screens: {
+      ...DEFAULT_MEMBER_SCREENS,
+      auditLogs: true,
+    },
+    permissions: {
+      ...DEFAULT_FEATURE_PERMISSIONS,
+      user_create: true,
+    },
+  },
+  {
+    id: 'usr-3',
+    employeeId: 'EMP-1003',
+    firstName: 'Mani',
+    lastName: 'Verma',
+    email: 'mani@gmail.com',
+    role: 'Project Manager',
+    team: 'Testing',
+    status: 'Active',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    department: 'Testing & QA',
+    phone: '+91 98765 43212',
+    location: 'Hyderabad, IN',
+    lastLogin: '2 hrs ago',
+    createdDate: '2024-03-15',
+    online: true,
+    activeProjectsCount: 1,
+    completedTasksCount: 87,
+    screens: DEFAULT_MEMBER_SCREENS,
+    permissions: DEFAULT_FEATURE_PERMISSIONS,
+  },
+];

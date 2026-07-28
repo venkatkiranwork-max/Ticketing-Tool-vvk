@@ -1,0 +1,9 @@
+# Backend placeholders for Phase 2+
+
+# controllers/ — auth, workspace, project, issue controllers
+# services/ — business logic layer
+# repositories/ — data access layer
+# models/ — Mongoose schemas
+# validators/ — express-validator schemas
+# middleware/ — auth, rbac (beyond error/validate)
+# socket/ — Socket.IO handlers (Phase 9)

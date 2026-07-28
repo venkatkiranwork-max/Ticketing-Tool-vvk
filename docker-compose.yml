@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: ticketflow-mongodb
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ticketflow
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-builder
+    container_name: ticketflow-backend
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: mongodb://admin:password@mongodb:27017/ticketflow?authSource=admin
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_REFRESH_SECRET: your-refresh-secret-key-change-in-production
+      CLIENT_URL: http://localhost:5173
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./backend/dist:/app/backend/dist
+    networks:
+      - ticketflow
+    command: npm run dev
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-builder
+    container_name: ticketflow-frontend
+    ports:
+      - '5173:5173'
+    environment:
+      VITE_API_BASE_URL: http://localhost:5000/api/v1
+    volumes:
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/index.html:/app/frontend/index.html
+      - ./frontend/vite.config.ts:/app/frontend/vite.config.ts
+    networks:
+      - ticketflow
+    command: npm run dev
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
+
+networks:
+  ticketflow:
+    driver: bridge

@@ -1,0 +1,35 @@
+export const mockReportSummary = {
+  completionRate: 74,
+  totalIssues: 196,
+  completedIssues: 145,
+  openIssues: 51,
+  avgResolutionTimeDays: 2.8,
+  sprintVelocityPoints: 48,
+  statusBreakdown: {
+    backlog: 12,
+    todo: 18,
+    in_progress: 21,
+    review: 10,
+    done: 135,
+  },
+  priorityBreakdown: {
+    critical: 12,
+    high: 44,
+    medium: 82,
+    low: 58,
+  },
+  sprintPerformance: [
+    { sprint: 'Sprint 20', planned: 40, completed: 38, velocity: 95 },
+    { sprint: 'Sprint 21', planned: 45, completed: 42, velocity: 93 },
+    { sprint: 'Sprint 22', planned: 50, completed: 48, velocity: 96 },
+    { sprint: 'Sprint 23', planned: 52, completed: 45, velocity: 86 },
+    { sprint: 'Sprint 24', planned: 55, completed: 52, velocity: 94 },
+  ],
+  weeklyTrend: [
+    { day: 'Mon', backlog: 15, inProgress: 24, done: 120 },
+    { day: 'Tue', backlog: 14, inProgress: 26, done: 125 },
+    { day: 'Wed', backlog: 13, inProgress: 28, done: 129 },
+    { day: 'Thu', backlog: 12, inProgress: 25, done: 132 },
+    { day: 'Fri', backlog: 12, inProgress: 21, done: 135 },
+  ],
+};

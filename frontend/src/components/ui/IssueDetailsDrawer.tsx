@@ -45,6 +45,7 @@ import {
 import { mockUsers, toMockUser } from '@/mock/users';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/features/auth/permissions';
+import { useUsersQuery } from '@/hooks/useUsersQuery';
 import type { IssueStatus, IssuePriority, IssueType } from '@/mock/issues';
 
 const typeIcons: Record<IssueType, React.ReactNode> = {
@@ -68,6 +69,7 @@ export function IssueDetailsDrawer() {
 
   const { addComment, editComment, deleteComment } = useCommentMutations(selectedIssueId);
   const { addAttachment, removeAttachment } = useAttachmentMutations(selectedIssueId);
+  const { data: allUsers = [] } = useUsersQuery();
   const { addChecklistItem, toggleChecklistItem, deleteChecklistItem } = useChecklistMutations(selectedIssueId);
 
   // Local state
@@ -254,14 +256,14 @@ export function IssueDetailsDrawer() {
                     Assignee
                   </Typography>
                   <Select
-                    value={issue.assignee?.id || mockUsers[0].id}
+                    value={issue.assignee?.id || allUsers[0]?.id || mockUsers[0]?.id || ''}
                     onChange={(e) => handleAssigneeChange(e.target.value)}
                     disabled={!canEditAllFields}
                     size="small"
                     fullWidth
                     sx={{ mt: 0.5, borderRadius: '8px' }}
                   >
-                    {mockUsers.map((u) => (
+                    {allUsers.map((u) => (
                       <MenuItem key={u.id} value={u.id}>
                         {u.firstName} {u.lastName} ({u.team})
                       </MenuItem>

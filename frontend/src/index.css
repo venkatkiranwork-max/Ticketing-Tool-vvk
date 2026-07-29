@@ -1,39 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 :root {
-  --color-bg: #f4f7f5;
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-ink: #0f1f1a;
-  --color-muted: #5a6f66;
-  --color-accent: #1a7a5c;
-  --color-accent-soft: #d8efe6;
-  --color-border: #d5e0db;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-accent: #2563eb;
+  --color-accent-soft: #eff6ff;
+  --color-border: #e2e8f0;
 }
 
 .dark {
-  --color-bg: #0c1612;
-  --color-surface: #14201b;
-  --color-ink: #e8f2ed;
-  --color-muted: #8aa399;
-  --color-accent: #3dba8f;
-  --color-accent-soft: #1a3329;
-  --color-border: #243830;
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-ink: #f1f5f9;
+  --color-muted: #94a3b8;
+  --color-accent: #60a5fa;
+  --color-accent-soft: #1e3a5f;
+  --color-border: #334155;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
+html {
+  overflow-x: hidden;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  height: 100%;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
   background: var(--color-bg);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  overflow-x: hidden;
 }

@@ -48,6 +48,13 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
   const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
+  const isDark = mode === 'dark';
+  const borderColor = isDark ? '#334155' : '#e2e8f0';
+  const headerBg = isDark ? '#1e293b' : '#ffffff';
+  const textMuted = isDark ? '#94a3b8' : '#64748b';
+  const activeColor = isDark ? '#60a5fa' : '#2563eb';
+  const inputBg = isDark ? 'rgba(148, 163, 184, 0.08)' : '#f8fafc';
+
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(e.currentTarget);
   };
@@ -97,30 +104,26 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
     { label: 'Mani Verma (Project Manager)', user: mockUsers[2] },
   ];
 
-  const headerBg =
-    mode === 'dark'
-      ? 'linear-gradient(90deg, #0d1225 0%, #0f1428 100%)'
-      : 'linear-gradient(90deg, #0f0b2a 0%, #1e1b4b 100%)';
-
   return (
     <AppBar
       position="sticky"
       elevation={0}
       sx={{
         background: headerBg,
-        borderBottom: '1px solid rgba(139, 92, 246, 0.18)',
+        borderBottom: `1px solid ${borderColor}`,
         zIndex: 1100,
-        backdropFilter: 'blur(12px)',
-        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.3)',
+        color: isDark ? '#f1f5f9' : '#0f172a',
+        width: '100%',
+        overflow: 'hidden',
       }}
     >
-      <Toolbar sx={{ minHeight: '60px !important', px: { xs: 2, md: 3 }, gap: 2 }}>
+      <Toolbar sx={{ minHeight: '56px !important', px: { xs: 2, md: 3 }, gap: 1.5 }}>
         {/* Mobile Hamburger */}
         <IconButton
           edge="start"
           aria-label="open drawer"
           onClick={onMobileMenuToggle}
-          sx={{ display: { md: 'none' }, color: '#a78bfa' }}
+          sx={{ display: { md: 'none' }, color: textMuted }}
         >
           <MenuIcon />
         </IconButton>
@@ -130,29 +133,27 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            background: 'rgba(139, 92, 246, 0.08)',
-            border: '1px solid rgba(139, 92, 246, 0.18)',
-            borderRadius: '12px',
-            px: 2,
-            py: 0.6,
-            width: { xs: '180px', sm: '300px', md: '360px' },
-            transition: 'all 0.2s ease',
+            background: inputBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: '8px',
+            px: 1.5,
+            py: 0.5,
+            width: { xs: '160px', sm: '260px', md: '320px' },
+            transition: 'border-color 0.15s',
             '&:focus-within': {
-              background: 'rgba(124, 58, 237, 0.15)',
-              borderColor: 'rgba(167, 139, 250, 0.5)',
-              boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.15)',
+              borderColor: activeColor,
             },
           }}
         >
-          <SearchIcon sx={{ color: 'rgba(167, 139, 250, 0.7)', fontSize: '1.1rem', mr: 1 }} />
+          <SearchIcon sx={{ color: textMuted, fontSize: '1rem', mr: 1 }} />
           <InputBase
             placeholder="Search tickets, projects…"
             sx={{
               fontSize: '0.875rem',
               width: '100%',
-              color: '#e2d9f3',
+              color: 'inherit',
               '& input': { p: 0 },
-              '& input::placeholder': { color: 'rgba(148, 163, 184, 0.5)', opacity: 1 },
+              '& input::placeholder': { color: textMuted, opacity: 1 },
             }}
           />
         </Box>
@@ -160,22 +161,16 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
         <Box sx={{ flexGrow: 1 }} />
 
         {/* Right Actions */}
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
           {/* Notifications */}
           <Tooltip title="Notifications">
             <IconButton
               component={RouterLink}
               to="/notifications"
+              size="small"
               sx={{
-                background: 'rgba(139, 92, 246, 0.08)',
-                border: '1px solid rgba(139, 92, 246, 0.15)',
-                borderRadius: '10px',
-                p: 1,
-                color: 'rgba(167, 139, 250, 0.9)',
-                '&:hover': {
-                  background: 'rgba(124, 58, 237, 0.18)',
-                  borderColor: 'rgba(167, 139, 250, 0.4)',
-                },
+                color: textMuted,
+                '&:hover': { color: activeColor, bgcolor: isDark ? 'rgba(96,165,250,0.08)' : 'rgba(37,99,235,0.06)' },
               }}
             >
               <Badge badgeContent={unreadCount} color="error">
@@ -185,60 +180,47 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
           </Tooltip>
 
           {/* Theme Toggle */}
-          <Tooltip title={mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>
+          <Tooltip title={mode === 'light' ? 'Dark Mode' : 'Light Mode'}>
             <IconButton
               onClick={toggleMode}
+              size="small"
               sx={{
-                background: 'rgba(139, 92, 246, 0.08)',
-                border: '1px solid rgba(139, 92, 246, 0.15)',
-                borderRadius: '10px',
-                p: 1,
-                color: 'rgba(167, 139, 250, 0.9)',
-                '&:hover': {
-                  background: 'rgba(124, 58, 237, 0.18)',
-                  borderColor: 'rgba(167, 139, 250, 0.4)',
-                },
+                color: textMuted,
+                '&:hover': { color: activeColor, bgcolor: isDark ? 'rgba(96,165,250,0.08)' : 'rgba(37,99,235,0.06)' },
               }}
             >
-              {mode === 'light' ? (
-                <DarkModeOutlinedIcon fontSize="small" />
-              ) : (
-                <LightModeOutlinedIcon fontSize="small" />
-              )}
+              {mode === 'light' ? <DarkModeOutlinedIcon fontSize="small" /> : <LightModeOutlinedIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
 
-          {/* User Profile Pill */}
+          {/* User Profile */}
           <Box
             onClick={handleMenuOpen}
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
-              background: 'rgba(124, 58, 237, 0.12)',
-              border: '1px solid rgba(139, 92, 246, 0.25)',
-              borderRadius: '12px',
+              gap: 0.75,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '8px',
               pl: 0.75,
-              pr: 1.25,
+              pr: 1,
               py: 0.5,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.15s',
               '&:hover': {
-                background: 'rgba(124, 58, 237, 0.22)',
-                borderColor: 'rgba(167, 139, 250, 0.5)',
-                boxShadow: '0 4px 16px rgba(124, 58, 237, 0.2)',
+                borderColor: activeColor,
+                bgcolor: isDark ? 'rgba(96,165,250,0.06)' : 'rgba(37,99,235,0.04)',
               },
             }}
           >
             <Avatar
               src={currentUser.avatarUrl}
               sx={{
-                width: 30,
-                height: 30,
-                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
+                width: 28,
+                height: 28,
+                bgcolor: activeColor,
+                fontSize: '0.75rem',
+                fontWeight: 700,
               }}
             >
               {currentUser?.firstName?.[0] || 'U'}
@@ -247,16 +229,15 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
             <Typography
               variant="body2"
               sx={{
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                color: '#e2d9f3',
+                fontWeight: 600,
+                fontSize: '0.82rem',
                 display: { xs: 'none', sm: 'block' },
               }}
             >
               {currentUser.firstName}
             </Typography>
 
-            <KeyboardArrowDownIcon fontSize="small" sx={{ color: 'rgba(167, 139, 250, 0.7)', fontSize: '1rem' }} />
+            <KeyboardArrowDownIcon sx={{ fontSize: '1rem', color: textMuted }} />
           </Box>
 
           <Menu
@@ -266,22 +247,22 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
             slotProps={{
               paper: {
                 sx: {
-                  borderRadius: '16px',
+                  borderRadius: '10px',
                   mt: 1,
-                  minWidth: 248,
-                  background: 'linear-gradient(145deg, #12172e 0%, #0f1428 100%)',
-                  boxShadow: '0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(139, 92, 246, 0.2)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
-                  color: '#f8fafc',
+                  minWidth: 240,
+                  boxShadow: isDark
+                    ? '0 8px 24px rgba(0,0,0,0.5)'
+                    : '0 8px 24px rgba(15,23,42,0.12)',
+                  border: `1px solid ${borderColor}`,
                 },
               },
             }}
           >
             <Box sx={{ px: 2, py: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#ffffff' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                 {currentUser.firstName} {currentUser.lastName}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(148, 163, 184, 0.8)', display: 'block' }}>
+              <Typography variant="caption" sx={{ color: textMuted, display: 'block' }}>
                 {currentUser.email}
               </Typography>
               <Chip
@@ -291,20 +272,19 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
                   mt: 0.75,
                   height: 20,
                   fontSize: '0.65rem',
-                  fontWeight: 700,
-                  background: 'rgba(124, 58, 237, 0.25)',
-                  color: '#c4b5fd',
-                  border: '1px solid rgba(167, 139, 250, 0.3)',
+                  fontWeight: 600,
+                  bgcolor: isDark ? 'rgba(96,165,250,0.12)' : 'rgba(37,99,235,0.08)',
+                  color: activeColor,
                 }}
               />
             </Box>
 
-            <Divider sx={{ borderColor: 'rgba(139, 92, 246, 0.15)' }} />
+            <Divider />
 
             {USE_MOCK_DATA && (
               <>
                 <Box sx={{ px: 2, py: 1 }}>
-                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.75, color: '#a78bfa' }}>
+                  <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', mb: 0.75, color: textMuted }}>
                     <SwapHorizOutlinedIcon fontSize="small" />
                     <Typography
                       variant="caption"
@@ -319,19 +299,16 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
                       onClick={() => handleSwitchPersona(p.user)}
                       selected={currentUser.id === p.user.id}
                       sx={{
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         fontSize: '0.82rem',
                         py: 0.75,
-                        color: currentUser.id === p.user.id ? '#c4b5fd' : 'rgba(203, 213, 225, 0.9)',
-                        '&.Mui-selected': { bgcolor: 'rgba(124, 58, 237, 0.2)' },
-                        '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.15)' },
                       }}
                     >
                       {p.label}
                     </MenuItem>
                   ))}
                 </Box>
-                <Divider sx={{ borderColor: 'rgba(139, 92, 246, 0.15)' }} />
+                <Divider />
               </>
             )}
 
@@ -339,7 +316,7 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
               component={RouterLink}
               to={ROUTES.PROFILE}
               onClick={handleMenuClose}
-              sx={{ color: 'rgba(203, 213, 225, 0.9)', '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.15)' } }}
+              sx={{ fontSize: '0.875rem' }}
             >
               Profile Settings
             </MenuItem>
@@ -347,13 +324,13 @@ export function TopHeader({ onMobileMenuToggle }: TopHeaderProps) {
               component={RouterLink}
               to={ROUTES.SETTINGS}
               onClick={handleMenuClose}
-              sx={{ color: 'rgba(203, 213, 225, 0.9)', '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.15)' } }}
+              sx={{ fontSize: '0.875rem' }}
             >
               System Settings
             </MenuItem>
             <MenuItem
               onClick={handleLogout}
-              sx={{ color: '#f87171', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+              sx={{ color: '#ef4444', fontSize: '0.875rem' }}
             >
               Sign Out
             </MenuItem>

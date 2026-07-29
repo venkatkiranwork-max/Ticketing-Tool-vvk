@@ -66,6 +66,16 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
 
   const [personaAnchorEl, setPersonaAnchorEl] = useState<null | HTMLElement>(null);
 
+  const isDark = mode === 'dark';
+
+  const sidebarBg = isDark ? '#1e293b' : '#ffffff';
+  const sidebarBorder = isDark ? '#334155' : '#e2e8f0';
+  const textPrimary = isDark ? '#f1f5f9' : '#0f172a';
+  const textMuted = isDark ? '#94a3b8' : '#64748b';
+  const activeColor = isDark ? '#60a5fa' : '#2563eb';
+  const activeBg = isDark ? 'rgba(96, 165, 250, 0.12)' : 'rgba(37, 99, 235, 0.08)';
+  const hoverBg = isDark ? 'rgba(148, 163, 184, 0.08)' : 'rgba(15, 23, 42, 0.04)';
+
   const handleSwitchPersona = (selectedUser: MockUser) => {
     if (selectedUser.status === 'Locked' || selectedUser.status === 'Inactive' || selectedUser.status === 'Suspended') {
       toast.error(`Account status is ${selectedUser.status}. Cannot switch.`);
@@ -124,29 +134,19 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
   return (
     <Box
       sx={{
-        width: collapsed ? 72 : 260,
-        height: '100vh',
+        width: collapsed ? 64 : 240,
+        height: '100%',
         position: 'relative',
-        background: 'linear-gradient(180deg, #0f0b2a 0%, #0d1225 50%, #080d1e 100%)',
-        color: '#f8fafc',
+        background: sidebarBg,
+        color: textPrimary,
         display: 'flex',
         flexDirection: 'column',
-        transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        borderRight: '1px solid rgba(139, 92, 246, 0.15)',
-        boxShadow: '4px 0 32px rgba(0, 0, 0, 0.4)',
+        transition: 'width 0.2s ease',
+        flexShrink: 0,
+        borderRight: `1px solid ${sidebarBorder}`,
         zIndex: 1200,
         overflowX: 'hidden',
         userSelect: 'none',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(124, 58, 237, 0.12) 0%, transparent 60%)',
-          pointerEvents: 'none',
-        },
       }}
     >
       {/* 1. Brand Header */}
@@ -156,10 +156,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
-          minHeight: 64,
-          borderBottom: '1px solid rgba(139, 92, 246, 0.12)',
-          position: 'relative',
-          zIndex: 1,
+          minHeight: 60,
+          borderBottom: `1px solid ${sidebarBorder}`,
         }}
       >
         <Stack
@@ -170,36 +168,33 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
         >
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-              borderRadius: '10px',
+              width: 32,
+              height: 32,
+              background: activeColor,
+              borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 16px rgba(124, 58, 237, 0.5)',
               flexShrink: 0,
             }}
           >
-            <ConfirmationNumberOutlinedIcon sx={{ fontSize: 20, color: '#ffffff' }} />
+            <ConfirmationNumberOutlinedIcon sx={{ fontSize: 18, color: '#ffffff' }} />
           </Box>
 
           {!collapsed && (
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                variant="subtitle1"
+                variant="subtitle2"
                 sx={{
-                  fontWeight: 800,
-                  lineHeight: 1.1,
-                  letterSpacing: '-0.02em',
-                  background: 'linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  color: textPrimary,
+                  fontSize: '0.9rem',
                 }}
               >
                 {APP_NAME}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(167, 139, 250, 0.8)', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em' }}>
+              <Typography variant="caption" sx={{ color: textMuted, fontSize: '0.7rem' }}>
                 Enterprise Portal
               </Typography>
             </Box>
@@ -212,10 +207,10 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
               size="small"
               onClick={onToggleCollapse}
               sx={{
-                color: 'rgba(148, 163, 184, 0.7)',
+                color: textMuted,
                 '&:hover': {
-                  color: '#ffffff',
-                  bgcolor: 'rgba(139, 92, 246, 0.15)',
+                  color: textPrimary,
+                  bgcolor: hoverBg,
                 },
               }}
             >
@@ -226,8 +221,18 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
       </Box>
 
       {/* 2. Navigation */}
-      <Box sx={{ flex: 1, overflowY: 'auto', py: 2, px: collapsed ? 1 : 1.5, position: 'relative', zIndex: 1, '&::-webkit-scrollbar': { width: '3px' }, '&::-webkit-scrollbar-track': { background: 'transparent' }, '&::-webkit-scrollbar-thumb': { background: 'rgba(139, 92, 246, 0.3)', borderRadius: '4px' } }}>
-        <List component="nav" disablePadding sx={{ gap: 0.5, display: 'flex', flexDirection: 'column' }}>
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          py: 1.5,
+          px: collapsed ? 0.75 : 1.25,
+          '&::-webkit-scrollbar': { width: '3px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+          '&::-webkit-scrollbar-thumb': { background: sidebarBorder, borderRadius: '4px' },
+        }}
+      >
+        <List component="nav" disablePadding sx={{ gap: 0.25, display: 'flex', flexDirection: 'column' }}>
           {userNavDefs.map((item) => {
             const isActive = location.pathname === item.route;
             const icon = iconMap[item.iconName] || <DashboardOutlinedIcon fontSize="small" />;
@@ -239,55 +244,23 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                   to={item.route}
                   onClick={onMobileClose}
                   sx={{
-                    borderRadius: '12px',
-                    minHeight: 44,
-                    px: collapsed ? 1.5 : 1.75,
+                    borderRadius: '8px',
+                    minHeight: 40,
+                    px: collapsed ? 1.25 : 1.5,
                     justifyContent: collapsed ? 'center' : 'flex-start',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    bgcolor: isActive
-                      ? 'rgba(124, 58, 237, 0.22)'
-                      : 'transparent',
-                    color: isActive ? '#e2d9f3' : 'rgba(148, 163, 184, 0.8)',
-                    border: isActive
-                      ? '1px solid rgba(167, 139, 250, 0.35)'
-                      : '1px solid transparent',
-                    transition: 'all 0.18s ease',
+                    bgcolor: isActive ? activeBg : 'transparent',
+                    color: isActive ? activeColor : textMuted,
+                    transition: 'all 0.15s ease',
                     '&:hover': {
-                      bgcolor: isActive
-                        ? 'rgba(124, 58, 237, 0.28)'
-                        : 'rgba(139, 92, 246, 0.1)',
-                      color: '#ffffff',
-                      border: '1px solid rgba(167, 139, 250, 0.2)',
+                      bgcolor: isActive ? activeBg : hoverBg,
+                      color: isActive ? activeColor : textPrimary,
                     },
-                    '&::before': isActive
-                      ? {
-                          content: '""',
-                          position: 'absolute',
-                          left: 0,
-                          top: '20%',
-                          bottom: '20%',
-                          width: '3px',
-                          borderRadius: '0 3px 3px 0',
-                          background: 'linear-gradient(180deg, #a78bfa 0%, #7c3aed 100%)',
-                          boxShadow: '0 0 12px rgba(167, 139, 250, 0.8)',
-                        }
-                      : {},
-                    '&::after': isActive
-                      ? {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'radial-gradient(ellipse at 20% 50%, rgba(124, 58, 237, 0.12) 0%, transparent 70%)',
-                          pointerEvents: 'none',
-                        }
-                      : {},
                   }}
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: collapsed ? 0 : 34,
-                      color: isActive ? '#c4b5fd' : 'rgba(148, 163, 184, 0.7)',
+                      minWidth: collapsed ? 0 : 32,
+                      color: 'inherit',
                       justifyContent: 'center',
                     }}
                   >
@@ -307,8 +280,8 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                           variant="body2"
                           sx={{
                             fontSize: '0.875rem',
-                            fontWeight: isActive ? 700 : 500,
-                            letterSpacing: isActive ? '-0.01em' : '0',
+                            fontWeight: isActive ? 600 : 500,
+                            color: 'inherit',
                           }}
                         >
                           {item.label}
@@ -326,44 +299,33 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
       {/* 3. Footer */}
       <Box
         sx={{
-          position: 'relative',
-          zIndex: 1,
-          borderTop: '1px solid rgba(139, 92, 246, 0.12)',
-          background: 'rgba(0, 0, 0, 0.3)',
-          backdropFilter: 'blur(12px)',
+          borderTop: `1px solid ${sidebarBorder}`,
         }}
       >
         {!collapsed ? (
-          <Stack spacing={1} sx={{ p: 1.5 }}>
-            {/* User Profile Card */}
+          <Stack spacing={0} sx={{ p: 1.25 }}>
+            {/* User Profile Row */}
             <Box
               onClick={(e) => setPersonaAnchorEl(e.currentTarget)}
               sx={{
-                p: 1.25,
-                borderRadius: '12px',
-                background: 'rgba(139, 92, 246, 0.08)',
-                border: '1px solid rgba(139, 92, 246, 0.18)',
+                p: 1,
+                borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.25,
+                gap: 1,
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  background: 'rgba(124, 58, 237, 0.18)',
-                  borderColor: 'rgba(167, 139, 250, 0.4)',
-                  boxShadow: '0 4px 16px rgba(124, 58, 237, 0.15)',
-                },
+                transition: 'background 0.15s',
+                '&:hover': { bgcolor: hoverBg },
               }}
             >
               <Avatar
                 src={currentUser.avatarUrl}
                 sx={{
-                  width: 34,
-                  height: 34,
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                  fontSize: '0.85rem',
-                  fontWeight: 800,
-                  boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
+                  width: 32,
+                  height: 32,
+                  bgcolor: activeColor,
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
                   flexShrink: 0,
                 }}
               >
@@ -373,13 +335,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                 <Typography
                   variant="body2"
                   sx={{
-                    fontWeight: 700,
-                    color: '#ffffff',
+                    fontWeight: 600,
+                    color: textPrimary,
                     textOverflow: 'ellipsis',
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
-                    lineHeight: 1.2,
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                   }}
                 >
                   {currentUser.firstName} {currentUser.lastName}
@@ -387,52 +348,41 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                 <Typography
                   variant="caption"
                   sx={{
-                    color: '#a78bfa',
+                    color: textMuted,
                     display: 'block',
-                    textOverflow: 'ellipsis',
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
-                    fontWeight: 600,
-                    fontSize: '0.68rem',
+                    textOverflow: 'ellipsis',
+                    fontSize: '0.7rem',
                   }}
                 >
                   {currentUser.role}
                 </Typography>
               </Box>
-              <SwapHorizOutlinedIcon fontSize="small" sx={{ color: 'rgba(148, 163, 184, 0.6)', flexShrink: 0 }} />
+              <SwapHorizOutlinedIcon fontSize="small" sx={{ color: textMuted, flexShrink: 0, fontSize: '1rem' }} />
             </Box>
 
             {/* Quick Actions */}
-            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', px: 0.5 }}>
-              <Tooltip title={mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}>
+            <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', px: 0.5, pt: 0.5 }}>
+              <Tooltip title={mode === 'light' ? 'Dark Mode' : 'Light Mode'}>
                 <IconButton
                   size="small"
                   onClick={toggleMode}
-                  sx={{
-                    color: 'rgba(148, 163, 184, 0.7)',
-                    borderRadius: '8px',
-                    '&:hover': { color: '#c4b5fd', bgcolor: 'rgba(139, 92, 246, 0.15)' },
-                  }}
+                  sx={{ color: textMuted, '&:hover': { color: textPrimary, bgcolor: hoverBg } }}
                 >
                   {mode === 'light' ? <DarkModeOutlinedIcon fontSize="small" /> : <LightModeOutlinedIcon fontSize="small" />}
                 </IconButton>
               </Tooltip>
 
-              <Box sx={{ flex: 1, textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ color: 'rgba(100, 116, 139, 0.7)', fontSize: '0.6rem' }}>
-                  v2.4
-                </Typography>
-              </Box>
+              <Typography variant="caption" sx={{ color: textMuted, fontSize: '0.65rem' }}>
+                v2.4
+              </Typography>
 
               <Tooltip title="Sign Out">
                 <IconButton
                   size="small"
                   onClick={handleLogout}
-                  sx={{
-                    color: 'rgba(248, 113, 113, 0.8)',
-                    borderRadius: '8px',
-                    '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.15)', color: '#f87171' },
-                  }}
+                  sx={{ color: textMuted, '&:hover': { color: '#ef4444', bgcolor: 'rgba(239, 68, 68, 0.08)' } }}
                 >
                   <LogoutOutlinedIcon fontSize="small" />
                 </IconButton>
@@ -445,7 +395,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
               <IconButton
                 size="small"
                 onClick={onToggleCollapse}
-                sx={{ color: 'rgba(148, 163, 184, 0.7)', '&:hover': { color: '#c4b5fd', bgcolor: 'rgba(139, 92, 246, 0.15)' } }}
+                sx={{ color: textMuted, '&:hover': { color: textPrimary, bgcolor: hoverBg } }}
               >
                 <ChevronRightIcon />
               </IconButton>
@@ -455,10 +405,10 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                 <Avatar
                   src={currentUser.avatarUrl}
                   sx={{
-                    width: 30,
-                    height: 30,
-                    fontSize: '0.75rem',
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                    width: 28,
+                    height: 28,
+                    fontSize: '0.72rem',
+                    bgcolor: activeColor,
                   }}
                 >
                   {currentUser?.firstName?.[0] || 'U'}
@@ -477,23 +427,23 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
         slotProps={{
           paper: {
             sx: {
-              borderRadius: '16px',
+              borderRadius: '10px',
               mt: -1,
               ml: 1,
-              minWidth: 268,
-              background: 'linear-gradient(145deg, #12172e 0%, #0f1428 100%)',
-              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(139, 92, 246, 0.2)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
-              color: '#f8fafc',
+              minWidth: 256,
+              boxShadow: isDark
+                ? '0 8px 24px rgba(0,0,0,0.5)'
+                : '0 8px 24px rgba(15,23,42,0.12)',
+              border: `1px solid ${sidebarBorder}`,
             },
           },
         }}
       >
         <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#ffffff' }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
             {currentUser.firstName} {currentUser.lastName}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(148, 163, 184, 0.8)', display: 'block' }}>
+          <Typography variant="caption" sx={{ color: textMuted, display: 'block' }}>
             {currentUser.email}
           </Typography>
           <Chip
@@ -503,21 +453,21 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
               mt: 0.75,
               height: 20,
               fontSize: '0.65rem',
-              fontWeight: 700,
-              background: 'rgba(124, 58, 237, 0.25)',
-              color: '#c4b5fd',
-              border: '1px solid rgba(167, 139, 250, 0.3)',
+              fontWeight: 600,
+              bgcolor: activeBg,
+              color: activeColor,
+              border: `1px solid ${activeColor}22`,
             }}
           />
         </Box>
 
         {USE_MOCK_DATA && (
           <>
-            <Divider sx={{ borderColor: 'rgba(139, 92, 246, 0.15)' }} />
+            <Divider />
             <Box sx={{ px: 2, py: 1 }}>
               <Typography
                 variant="caption"
-                sx={{ color: '#a78bfa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                sx={{ color: textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
               >
                 Switch Demo Persona
               </Typography>
@@ -527,13 +477,11 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                   onClick={() => handleSwitchPersona(p.user)}
                   selected={currentUser.id === p.user.id}
                   sx={{
-                    borderRadius: '8px',
+                    borderRadius: '6px',
                     fontSize: '0.82rem',
-                    py: 1,
+                    py: 0.75,
                     my: 0.25,
-                    color: currentUser.id === p.user.id ? '#c4b5fd' : 'rgba(203, 213, 225, 0.9)',
-                    '&.Mui-selected': { bgcolor: 'rgba(124, 58, 237, 0.2)' },
-                    '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.15)' },
+                    '&.Mui-selected': { bgcolor: activeBg, color: activeColor },
                   }}
                 >
                   {p.label}
@@ -543,18 +491,18 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
           </>
         )}
 
-        <Divider sx={{ borderColor: 'rgba(139, 92, 246, 0.15)' }} />
+        <Divider />
         <MenuItem
           component={RouterLink}
           to={ROUTES.PROFILE}
           onClick={() => setPersonaAnchorEl(null)}
-          sx={{ color: 'rgba(203, 213, 225, 0.9)', '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.15)' } }}
+          sx={{ fontSize: '0.875rem' }}
         >
           Profile Settings
         </MenuItem>
         <MenuItem
           onClick={handleLogout}
-          sx={{ color: '#f87171', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+          sx={{ color: '#ef4444', fontSize: '0.875rem' }}
         >
           Sign Out
         </MenuItem>

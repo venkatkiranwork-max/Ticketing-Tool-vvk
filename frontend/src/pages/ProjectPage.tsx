@@ -49,6 +49,7 @@ import { CreateIssueModal } from '@/components/ui/CreateIssueModal';
 import { useIssuesQuery, useCloseSprintMutation, useUpdateIssueMutation } from '@/features/issues/useIssues';
 import { useUiStore } from '@/store/uiStore';
 import { useProjectsQuery } from '@/hooks/useProjectsQuery';
+import { useUsersQuery } from '@/hooks/useUsersQuery';
 
 export function ProjectPage() {
   const currentUser = toMockUser(useAuthStore((s) => s.user));
@@ -60,6 +61,7 @@ export function ProjectPage() {
 
   const { data: issues = [] } = useIssuesQuery();
   const { data: serverProjects, createProject: createProjectApi, updateProject: updateProjectApi } = useProjectsQuery();
+  const { data: allUsers = [] } = useUsersQuery();
   const [localProjectsState, setLocalProjectsState] = useState<MockProject[]>(mockProjects);
 
   useEffect(() => {
@@ -97,7 +99,7 @@ export function ProjectPage() {
 
   // Add member modal state
   const [openAddMemberModal, setOpenAddMemberModal] = useState(false);
-  const [memberUserId, setMemberUserId] = useState(mockUsers[0].id);
+  const [memberUserId, setMemberUserId] = useState(() => allUsers[0]?.id ?? mockUsers[0]?.id ?? '');
   const [memberRole, setMemberRole] = useState<ProjectMember['projectRole']>('Developer');
 
   // Project specific issues calculation
@@ -597,8 +599,11 @@ export function ProjectPage() {
       <Dialog open={openAddMemberModal} onClose={() => setOpenAddMemberModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700 }}>Add Member to Project</DialogTitle>
         <DialogContent sx={{ display: 'grid', gap: 2, pt: 1 }}>
-          <Select label="Select User" value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} fullWidth>
-            {mockUsers.map((u) => (
+          <Select label="Select User" value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} fullWidth displayEmpty>
+            {allUsers.length === 0 && (
+              <MenuItem disabled value="">No users available</MenuItem>
+            )}
+            {allUsers.map((u) => (
               <MenuItem key={u.id} value={u.id}>
                 {u.firstName} {u.lastName} ({u.team})
               </MenuItem>

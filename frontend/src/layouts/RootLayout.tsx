@@ -23,11 +23,10 @@ export function RootLayout() {
     <Box
       sx={{
         display: 'flex',
-        minHeight: '100vh',
-        background:
-          theme.palette.mode === 'dark'
-            ? 'radial-gradient(ellipse at 60% 0%, rgba(30, 27, 75, 0.5) 0%, #060b18 55%, #040810 100%)'
-            : 'radial-gradient(ellipse at 60% 0%, rgba(30, 27, 75, 0.3) 0%, #06091a 55%, #04060f 100%)',
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        background: theme.palette.mode === 'dark' ? '#0f172a' : '#f8fafc',
       }}
     >
       {/* Desktop Permanent Sidebar */}
@@ -49,9 +48,8 @@ export function RootLayout() {
             display: { xs: 'block', md: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
-              width: 260,
-              background: 'linear-gradient(180deg, #0f0b2a 0%, #0d1225 50%, #080d1e 100%)',
-              color: '#ffffff',
+              width: 240,
+              background: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
               border: 'none',
             },
           }}
@@ -64,14 +62,14 @@ export function RootLayout() {
         </Drawer>
       )}
 
-      {/* Main Right Content */}
+      {/* Main Right Content — takes remaining width, scrolls vertically */}
       <Box
         sx={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          minWidth: 0,
-          overflowX: 'hidden',
+          minWidth: 0,         // prevent flex child from overflowing parent
+          overflow: 'hidden',  // clip; vertical scroll handled by inner <main>
         }}
       >
         <TopHeader onMobileMenuToggle={handleMobileMenuToggle} />
@@ -80,7 +78,9 @@ export function RootLayout() {
           component="main"
           sx={{
             flex: 1,
-            p: { xs: 2, sm: 3, md: 3.5 },
+            overflowY: 'auto',   // vertical scroll only here
+            overflowX: 'hidden',
+            p: { xs: 2, sm: 2.5, md: 3 },
           }}
         >
           <Outlet />

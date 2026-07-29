@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -28,6 +28,12 @@ import {
   Menu,
   Switch,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControlLabel,
+  Badge,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -43,10 +49,23 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PeopleIcon from '@mui/icons-material/People';
 import TuneIcon from '@mui/icons-material/Tune';
+import EditIcon from '@mui/icons-material/Edit';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
 
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
-import { mockUsers as initialMockUsers, type MockUser, type UserStatus, type ScreenKey, type FeaturePermissionKey } from '@/mock/users';
+import {
+  mockUsers as initialMockUsers,
+  type MockUser,
+  type UserStatus,
+  type ScreenKey,
+  type FeaturePermissionKey,
+  type WorkspaceRole,
+  DEFAULT_MEMBER_SCREENS,
+  DEFAULT_FEATURE_PERMISSIONS,
+} from '@/mock/users';
 import { Forbidden403Page } from '@/pages/Forbidden403Page';
 import { UserDetailDrawer } from '@/components/admin/UserDetailDrawer';
 import { CreateUserModal } from '@/components/admin/CreateUserModal';
@@ -54,38 +73,57 @@ import { ScreenAccessModal } from '@/components/admin/ScreenAccessModal';
 import { FeaturePermissionsModal } from '@/components/admin/FeaturePermissionsModal';
 import { WelcomeEmailModal } from '@/components/admin/WelcomeEmailModal';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+// ─── Tab Panel Wrapper ───────────────────────────────────────────────────────
+function TabPanel({ children, value, index }: { children?: React.ReactNode; index: number; value: number }) {
   return (
-    <div role="tabpanel" hidden={value !== index} {...other}>
+    <div role="tabpanel" hidden={value !== index}>
       {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
     </div>
   );
 }
 
+// ─── Role colors ────────────────────────────────────────────────────────────
+const ROLE_COLOR: Record<string, string> = {
+  'Super Admin': '#6366f1',
+  Admin: '#3b82f6',
+  'Project Manager': '#10b981',
+  'Team Lead': '#f59e0b',
+  Member: '#64748b',
+  Viewer: '#94a3b8',
+  Guest: '#cbd5e1',
+};
+
+const STATUS_COLOR: Record<string, 'success' | 'default' | 'warning' | 'error'> = {
+  Active: 'success',
+  Inactive: 'default',
+  Suspended: 'warning',
+  Locked: 'error',
+};
+
+const ROLES: WorkspaceRole[] = ['Super Admin', 'Admin', 'Project Manager', 'Team Lead', 'Member', 'Viewer', 'Guest'];
+const TEAMS = ['IT', 'UI/UX', 'Testing', 'Engineering', 'Product Management', 'DevOps & SRE', 'Frontend', 'Backend', 'QA Automation'];
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 export const AdministrationPage: React.FC = () => {
   const currentUser = useAuthStore((s) => s.user);
 
-  // Super Admin Check
-  const isSuperAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'super_admin';
-  if (!isSuperAdmin) {
-    return <Forbidden403Page />;
-  }
-
+  // ── All state at top level (hooks must not be conditional) ──
   const [activeTab, setActiveTab] = useState(0);
   const [usersList, setUsersList] = useState<MockUser[]>(initialMockUsers);
 
-  // Filter and Search States
+  // User Management filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [roleFilter, setRoleFilter] = useState('All');
 
-  // Modal / Drawer States
+  // Audit Log filters
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditModuleFilter, setAuditModuleFilter] = useState('All');
+
+  // Screen Access tab search
+  const [screenSearch, setScreenSearch] = useState('');
+
+  // Modals
   const [selectedUser, setSelectedUser] = useState<MockUser | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createUserOpen, setCreateUserOpen] = useState(false);
@@ -94,209 +132,246 @@ export const AdministrationPage: React.FC = () => {
   const [welcomeEmailOpen, setWelcomeEmailOpen] = useState(false);
   const [welcomeUser, setWelcomeUser] = useState<{ firstName: string; lastName: string; email: string; tempPassword?: string } | null>(null);
 
-  // Action Menu state
+  // Edit User dialog
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUser, setEditUser] = useState<MockUser | null>(null);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<WorkspaceRole>('Member');
+  const [editTeam, setEditTeam] = useState('IT');
+  const [editStatus, setEditStatus] = useState<UserStatus>('Active');
+  const [editPhone, setEditPhone] = useState('');
+  const [editLocation, setEditLocation] = useState('');
+
+  // Action menu
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [targetUser, setTargetUser] = useState<MockUser | null>(null);
 
-  // Audit Logs State
+  // System Settings
+  const [forcePasswordChange, setForcePasswordChange] = useState(true);
+  const [strictRouteGuard, setStrictRouteGuard] = useState(true);
+  const [sessionTimeout, setSessionTimeout] = useState(true);
+  const [twoFactorAuth, setTwoFactorAuth] = useState(false);
+  const [emailNotify, setEmailNotify] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  // Audit Logs
   const [auditLogs, setAuditLogs] = useState([
-    { id: '1', time: '10:30 AM', actor: 'Alex Rivera', role: 'Super Admin', action: 'Granted Reports access to David Kim', module: 'Screen Access', status: 'SUCCESS' },
-    { id: '2', time: '10:45 AM', actor: 'Alex Rivera', role: 'Super Admin', action: 'Locked Chloe Dupont account', module: 'User Status', status: 'WARNING' },
-    { id: '3', time: '11:10 AM', actor: 'Sarah Chen', role: 'Admin', action: 'Created Employee Portal project', module: 'Projects', status: 'SUCCESS' },
-    { id: '4', time: '01:15 PM', actor: 'Alex Rivera', role: 'Super Admin', action: 'Reset password for Marcus Vance', module: 'User Management', status: 'SUCCESS' },
+    { id: '1', time: '10:30 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Granted Reports access to Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
+    { id: '2', time: '10:45 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Locked Mani Verma account', module: 'User Status', status: 'WARNING' },
+    { id: '3', time: '11:10 AM', actor: 'Ravi Sharma', role: 'Admin', action: 'Created Enterprise Platform Core project', module: 'Projects', status: 'SUCCESS' },
+    { id: '4', time: '01:15 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Reset password for Mani Verma', module: 'User Management', status: 'SUCCESS' },
+    { id: '5', time: '02:00 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Updated screen permissions for Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
+    { id: '6', time: '03:30 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Activated account for Mani Verma', module: 'User Status', status: 'SUCCESS' },
   ]);
 
-  // Handlers for User Actions
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: MockUser) => {
-    setMenuAnchor(event.currentTarget);
-    setTargetUser(user);
-  };
+  // ── Permission check (AFTER all hooks) ──────────────────────────────────
+  const isSuperAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'super_admin';
+  if (!isSuperAdmin) return <Forbidden403Page />;
 
-  const handleMenuClose = () => {
-    setMenuAnchor(null);
-  };
+  // ─── Filtered data ────────────────────────────────────────────────────────
+  const filteredUsers = useMemo(() => {
+    return usersList.filter((u) => {
+      const matchSearch =
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (u.employeeId || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus =
+        statusFilter === 'All' ||
+        (statusFilter === 'Active' && u.status === 'Active') ||
+        (statusFilter === 'Inactive' && u.status === 'Inactive') ||
+        (statusFilter === 'Locked' && u.status === 'Locked') ||
+        (statusFilter === 'Pending Verification' && u.status === 'Suspended');
+      const matchRole = roleFilter === 'All' || u.role === roleFilter;
+      return matchSearch && matchStatus && matchRole;
+    });
+  }, [usersList, searchQuery, statusFilter, roleFilter]);
 
-  const handleCreateUser = (newUserPartial: Partial<MockUser>) => {
-    const newUser: MockUser = {
-      id: `usr-${usersList.length + 1}`,
-      employeeId: newUserPartial.employeeId || `EMP-${1000 + usersList.length + 1}`,
-      firstName: newUserPartial.firstName || '',
-      lastName: newUserPartial.lastName || '',
-      email: newUserPartial.email || '',
-      role: newUserPartial.role || 'Member',
-      team: newUserPartial.team || 'Engineering',
-      status: 'Active',
-      avatarUrl: newUserPartial.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      department: newUserPartial.department || 'Engineering',
-      phone: newUserPartial.phone || '',
-      location: newUserPartial.location || 'San Francisco, CA',
-      lastLogin: 'Never',
-      createdDate: 'Today',
-      online: false,
-      activeProjectsCount: 0,
-      completedTasksCount: 0,
-      screens: {
-        dashboard: true,
-        projects: true,
-        issues: true,
-        board: true,
-        teams: true,
-        users: true,
-        reports: true,
-        auditLogs: false,
-        administration: false,
-        notifications: true,
-        profile: true,
-        settings: true,
-      },
-    };
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter((log) => {
+      const matchSearch =
+        log.actor.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        log.action.toLowerCase().includes(auditSearch.toLowerCase());
+      const matchModule = auditModuleFilter === 'All' || log.module === auditModuleFilter;
+      return matchSearch && matchModule;
+    });
+  }, [auditLogs, auditSearch, auditModuleFilter]);
 
-    setUsersList([newUser, ...usersList]);
-    toast.success(`User ${newUser.firstName} ${newUser.lastName} created successfully!`);
+  const filteredScreenUsers = useMemo(() => {
+    if (!screenSearch.trim()) return usersList;
+    return usersList.filter((u) =>
+      `${u.firstName} ${u.lastName}`.toLowerCase().includes(screenSearch.toLowerCase()) ||
+      u.role.toLowerCase().includes(screenSearch.toLowerCase())
+    );
+  }, [usersList, screenSearch]);
 
-    // Record audit log
-    setAuditLogs([
+  const roleCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    usersList.forEach((u) => { counts[u.role] = (counts[u.role] || 0) + 1; });
+    return counts;
+  }, [usersList]);
+
+  const auditModules = useMemo(() => {
+    const mods = new Set(auditLogs.map((l) => l.module));
+    return ['All', ...Array.from(mods)];
+  }, [auditLogs]);
+
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+  const addAuditLog = (action: string, module: string, status = 'SUCCESS') => {
+    setAuditLogs((prev) => [
       {
         id: Date.now().toString(),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actor: `${currentUser.firstName} ${currentUser.lastName}`,
-        role: currentUser.role,
-        action: `Created user ${newUser.firstName} ${newUser.lastName} (${newUser.email})`,
-        module: 'User Management',
-        status: 'SUCCESS',
+        actor: `${currentUser?.firstName} ${currentUser?.lastName}`,
+        role: currentUser?.role || 'Super Admin',
+        action,
+        module,
+        status,
       },
-      ...auditLogs,
+      ...prev,
     ]);
+  };
 
-    // Trigger Welcome Email preview
-    setWelcomeUser({
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      email: newUser.email,
-      tempPassword: 'Temp@1234',
-    });
+  const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, user: MockUser) => {
+    setMenuAnchor(e.currentTarget);
+    setTargetUser(user);
+  };
+  const handleMenuClose = () => { setMenuAnchor(null); };
+
+  const handleCreateUser = (data: Partial<MockUser>) => {
+    const newUser: MockUser = {
+      id: `usr-${Date.now()}`,
+      employeeId: data.employeeId || `EMP-${1000 + usersList.length + 1}`,
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      email: data.email || '',
+      role: data.role || 'Member',
+      team: data.team || 'Engineering',
+      status: 'Active',
+      avatarUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+      department: data.department || data.team || 'Engineering',
+      phone: data.phone || '',
+      location: data.location || '',
+      lastLogin: 'Never',
+      createdDate: new Date().toLocaleDateString(),
+      online: false,
+      activeProjectsCount: 0,
+      completedTasksCount: 0,
+      screens: { ...DEFAULT_MEMBER_SCREENS },
+      permissions: { ...DEFAULT_FEATURE_PERMISSIONS },
+    };
+    setUsersList((prev) => [newUser, ...prev]);
+    toast.success(`✅ User ${newUser.firstName} ${newUser.lastName} created!`);
+    addAuditLog(`Created user ${newUser.firstName} ${newUser.lastName} (${newUser.email})`, 'User Management');
+    setWelcomeUser({ firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, tempPassword: 'Temp@1234' });
     setWelcomeEmailOpen(true);
   };
 
   const handleUpdateStatus = (user: MockUser, newStatus: UserStatus) => {
-    setUsersList(usersList.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
-    toast.success(`User ${user.firstName}'s account status set to ${newStatus}`);
-
-    setAuditLogs([
-      {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actor: `${currentUser.firstName} ${currentUser.lastName}`,
-        role: currentUser.role,
-        action: `Changed status for ${user.firstName} ${user.lastName} to ${newStatus}`,
-        module: 'User Status',
-        status: newStatus === 'Locked' ? 'WARNING' : 'SUCCESS',
-      },
-      ...auditLogs,
-    ]);
+    setUsersList((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
+    toast.success(`${user.firstName}'s status set to ${newStatus}`);
+    addAuditLog(`Changed status for ${user.firstName} ${user.lastName} to ${newStatus}`, 'User Status', newStatus === 'Locked' ? 'WARNING' : 'SUCCESS');
   };
 
   const handleResetPassword = (user: MockUser) => {
-    toast.success(`Reset password token generated and emailed to ${user.email}`);
-
-    setAuditLogs([
-      {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actor: `${currentUser.firstName} ${currentUser.lastName}`,
-        role: currentUser.role,
-        action: `Reset password for ${user.firstName} ${user.lastName}`,
-        module: 'User Management',
-        status: 'SUCCESS',
-      },
-      ...auditLogs,
-    ]);
-
-    setWelcomeUser({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      tempPassword: 'Temp@1234',
-    });
+    toast.success(`Password reset email sent to ${user.email}`);
+    addAuditLog(`Reset password for ${user.firstName} ${user.lastName}`, 'User Management');
+    setWelcomeUser({ firstName: user.firstName, lastName: user.lastName, email: user.email, tempPassword: 'Temp@1234' });
     setWelcomeEmailOpen(true);
   };
 
   const handleSaveScreenAccess = (userId: string, updatedScreens: Record<ScreenKey, boolean>) => {
-    setUsersList(
-      usersList.map((u) => (u.id === userId ? { ...u, screens: updatedScreens } : u))
-    );
-    toast.success('Screen access rights saved');
-
+    setUsersList((prev) => prev.map((u) => (u.id === userId ? { ...u, screens: updatedScreens } : u)));
+    toast.success('Screen access updated');
     const u = usersList.find((x) => x.id === userId);
-    if (u) {
-      setAuditLogs([
-        {
-          id: Date.now().toString(),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          actor: `${currentUser.firstName} ${currentUser.lastName}`,
-          role: currentUser.role,
-          action: `Updated screen permissions for ${u.firstName} ${u.lastName}`,
-          module: 'Screen Access',
-          status: 'SUCCESS',
-        },
-        ...auditLogs,
-      ]);
-    }
+    if (u) addAuditLog(`Updated screen permissions for ${u.firstName} ${u.lastName}`, 'Screen Access');
   };
 
   const handleSaveFeaturePermissions = (userId: string, updatedPermissions: Record<FeaturePermissionKey, boolean>) => {
-    setUsersList(
-      usersList.map((u) => (u.id === userId ? { ...u, permissions: updatedPermissions } : u))
-    );
+    setUsersList((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: updatedPermissions } : u)));
     toast.success('Feature permissions updated');
+    const u = usersList.find((x) => x.id === userId);
+    if (u) addAuditLog(`Updated feature permissions for ${u.firstName} ${u.lastName}`, 'Screen Access');
   };
 
-  // Filtered Users List
-  const filteredUsers = usersList.filter((user) => {
-    const matchesSearch =
-      user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.employeeId && user.employeeId.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    const matchesStatus =
-      statusFilter === 'All' ||
-      (statusFilter === 'Active' && user.status === 'Active') ||
-      (statusFilter === 'Inactive' && user.status === 'Inactive') ||
-      (statusFilter === 'Locked' && user.status === 'Locked') ||
-      (statusFilter === 'Pending Verification' && user.status === 'Suspended');
-
-    return matchesSearch && matchesStatus;
-  });
-
-  const getStatusChipColor = (status: UserStatus) => {
-    switch (status) {
-      case 'Active':
-        return 'success';
-      case 'Inactive':
-        return 'default';
-      case 'Suspended':
-        return 'warning';
-      case 'Locked':
-        return 'error';
-      default:
-        return 'default';
-    }
+  const openEditDialog = (user: MockUser) => {
+    setEditUser(user);
+    setEditFirstName(user.firstName);
+    setEditLastName(user.lastName);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditTeam(user.team);
+    setEditStatus(user.status);
+    setEditPhone(user.phone || '');
+    setEditLocation(user.location || '');
+    setEditDialogOpen(true);
   };
 
+  const handleSaveEditUser = () => {
+    if (!editUser) return;
+    setUsersList((prev) =>
+      prev.map((u) =>
+        u.id === editUser.id
+          ? { ...u, firstName: editFirstName, lastName: editLastName, email: editEmail, role: editRole, team: editTeam, status: editStatus, phone: editPhone, location: editLocation }
+          : u
+      )
+    );
+    toast.success(`${editFirstName} ${editLastName}'s profile updated`);
+    addAuditLog(`Edited profile for ${editFirstName} ${editLastName}`, 'User Management');
+    setEditDialogOpen(false);
+  };
+
+  const getScreenLabel = (user: MockUser) => {
+    if (user.role === 'Super Admin') return { label: 'Full Access', color: 'primary' as const };
+    const screens = user.screens || {};
+    const keys = Object.keys(screens) as ScreenKey[];
+    const allTrue = keys.every((k) => screens[k] !== false);
+    if (allTrue) return { label: 'Full Access', color: 'success' as const };
+    const allFalse = keys.every((k) => screens[k] === false);
+    if (allFalse) return { label: 'No Access', color: 'error' as const };
+    return { label: 'Custom', color: 'warning' as const };
+  };
+
+  const settingToggle = (label: string, value: boolean, onChange: (v: boolean) => void, desc: string) => (
+    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
+      <Box>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{label}</Typography>
+        <Typography variant="caption" color="text.secondary">{desc}</Typography>
+      </Box>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={value}
+            onChange={(e) => {
+              onChange(e.target.checked);
+              toast.success(`${label}: ${e.target.checked ? 'Enabled' : 'Disabled'}`);
+              addAuditLog(`${e.target.checked ? 'Enabled' : 'Disabled'} "${label}"`, 'System Settings');
+            }}
+            color="primary"
+          />
+        }
+        label={<Typography variant="caption" sx={{ fontWeight: 700, color: value ? 'primary.main' : 'text.secondary' }}>{value ? 'ON' : 'OFF'}</Typography>}
+        labelPlacement="start"
+      />
+    </Stack>
+  );
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ py: 4, minHeight: 'calc(100vh - 64px)', bgcolor: 'background.default' }}>
-      <Container maxWidth="xl">
+    <Box sx={{ minHeight: '100%', bgcolor: 'background.default' }}>
+      <Container maxWidth="xl" disableGutters sx={{ py: 2, px: { xs: 1.5, sm: 2, md: 2.5 } }}>
+
         {/* Page Header */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', mb: 3, gap: 2 }}>
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 32 }} />
-              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.03em' }}>
+              <AdminPanelSettingsIcon color="primary" sx={{ fontSize: 30 }} />
+              <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
                 Administration 🔒
               </Typography>
             </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
               Enterprise governance, user access management, screen security, and audit logs.
             </Typography>
           </Box>
@@ -305,61 +380,58 @@ export const AdministrationPage: React.FC = () => {
             disableElevation
             startIcon={<AddIcon />}
             onClick={() => setCreateUserOpen(true)}
-            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 2.5, py: 1, mt: { xs: 2, sm: 0 } }}
+            sx={{ borderRadius: '10px', fontWeight: 700, px: 2.5, whiteSpace: 'nowrap' }}
           >
-            Create User
+            + Create User
           </Button>
         </Stack>
 
-        {/* Administration Suite Tabs */}
-        <Paper variant="outlined" sx={{ borderRadius: '14px', mb: 3 }}>
+        {/* Tabs */}
+        <Paper variant="outlined" sx={{ borderRadius: '12px', mb: 3 }}>
           <Tabs
             value={activeTab}
             onChange={(_e, val) => setActiveTab(val)}
             variant="scrollable"
             scrollButtons="auto"
-            sx={{
-              px: 2,
-              '& .MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                minHeight: 56,
-              },
-            }}
+            sx={{ px: 1, '& .MuiTab-root': { textTransform: 'none', fontWeight: 700, fontSize: '0.85rem', minHeight: 52 } }}
           >
             <Tab icon={<PeopleIcon fontSize="small" />} iconPosition="start" label="User Management" />
             <Tab icon={<SecurityIcon fontSize="small" />} iconPosition="start" label="Role & Permissions" />
             <Tab icon={<VisibilityIcon fontSize="small" />} iconPosition="start" label="Screen Access" />
-            <Tab icon={<ShieldIcon fontSize="small" />} iconPosition="start" label="Audit Logs" />
+            <Tab icon={<ShieldIcon fontSize="small" />} iconPosition="start" label={<Badge badgeContent={auditLogs.length} color="primary" max={99}>Audit Logs</Badge>} />
             <Tab icon={<EmailIcon fontSize="small" />} iconPosition="start" label="Email Templates" />
             <Tab icon={<TuneIcon fontSize="small" />} iconPosition="start" label="System Settings" />
           </Tabs>
         </Paper>
 
-        {/* 1. USER MANAGEMENT TAB */}
-        <CustomTabPanel value={activeTab} index={0}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            {/* Filter and Search Bar */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', mb: 3 }}>
+        {/* ═══════════════════ TAB 1: USER MANAGEMENT ═══════════════════ */}
+        <TabPanel value={activeTab} index={0}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+            {/* Filters row */}
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', alignItems: { md: 'center' }, flexWrap: 'wrap' }}>
               <TextField
                 placeholder="Search by Name, Email, Employee ID..."
                 size="small"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ width: { xs: '100%', sm: 340 } }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" color="action" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
+                sx={{ width: { xs: '100%', sm: 300 } }}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" color="action" /></InputAdornment> } }}
               />
-
-              <Stack direction="row" spacing={1} sx={{ overflow: 'auto' }}>
+              {/* Role filter */}
+              <TextField
+                select
+                size="small"
+                label="Role"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                sx={{ minWidth: 150 }}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><FilterListIcon fontSize="small" color="action" /></InputAdornment> } }}
+              >
+                <MenuItem value="All">All Roles</MenuItem>
+                {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+              </TextField>
+              {/* Status filter chips */}
+              <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.75 }}>
                 {['All', 'Active', 'Inactive', 'Locked', 'Pending Verification'].map((f) => (
                   <Chip
                     key={f}
@@ -367,491 +439,513 @@ export const AdministrationPage: React.FC = () => {
                     onClick={() => setStatusFilter(f)}
                     color={statusFilter === f ? 'primary' : 'default'}
                     variant={statusFilter === f ? 'filled' : 'outlined'}
+                    size="small"
                     sx={{ fontWeight: 700, cursor: 'pointer' }}
                   />
                 ))}
               </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto', whiteSpace: 'nowrap' }}>
+                {filteredUsers.length} / {usersList.length} users
+              </Typography>
             </Stack>
 
-            {/* Users Table */}
+            {/* Table */}
             <TableContainer>
               <Table sx={{ minWidth: 800 }}>
                 <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Name & EMP ID</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Team</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Last Login</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Screen Access</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                  <TableRow sx={{ bgcolor: 'background.default' }}>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name & EMP ID</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Role</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Team</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last Login</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Screen Access</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow
-                      key={user.id}
-                      hover
-                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                    >
-                      <TableCell>
-                        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                          <Avatar src={user.avatarUrl} sx={{ width: 36, height: 36, fontWeight: 700 }}>
-                            {user.firstName[0]}
-                          </Avatar>
-                          <Box>
-                            <Typography
-                              variant="subtitle2"
-                              sx={{ fontWeight: 700, cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setDrawerOpen(true);
-                              }}
+                  {filteredUsers.map((user) => {
+                    const screenBadge = getScreenLabel(user);
+                    return (
+                      <TableRow key={user.id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                        <TableCell>
+                          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                            <Badge
+                              overlap="circular"
+                              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                              variant="dot"
+                              sx={{ '& .MuiBadge-badge': { bgcolor: user.online ? '#10b981' : '#94a3b8', width: 9, height: 9, borderRadius: '50%', border: '1.5px solid white' } }}
                             >
-                              {user.firstName} {user.lastName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {user.employeeId || 'EMP-1000'}
-                            </Typography>
-                          </Box>
+                              <Avatar src={user.avatarUrl} sx={{ width: 34, height: 34, fontWeight: 700, fontSize: '0.85rem', bgcolor: ROLE_COLOR[user.role] + '22', color: ROLE_COLOR[user.role] }}>
+                                {user.firstName[0]}
+                              </Avatar>
+                            </Badge>
+                            <Box>
+                              <Typography
+                                variant="body2"
+                                sx={{ fontWeight: 700, cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                                onClick={() => { setSelectedUser(user); setDrawerOpen(true); }}
+                              >
+                                {user.firstName} {user.lastName}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">{user.employeeId || 'EMP-1000'}</Typography>
+                            </Box>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>{user.email}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={user.role}
+                            size="small"
+                            sx={{ fontWeight: 700, fontSize: '0.68rem', bgcolor: ROLE_COLOR[user.role] + '18', color: ROLE_COLOR[user.role], border: `1px solid ${ROLE_COLOR[user.role]}30` }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.82rem' }}>{user.team}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={user.status} size="small" color={STATUS_COLOR[user.status] || 'default'} sx={{ fontWeight: 700, fontSize: '0.68rem' }} />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">{user.lastLogin || 'Today'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={screenBadge.label} size="small" variant="outlined" color={screenBadge.color} sx={{ fontWeight: 700, fontSize: '0.65rem' }} />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
+                            <Tooltip title="View Details">
+                              <IconButton size="small" onClick={() => { setSelectedUser(user); setDrawerOpen(true); }}>
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit User">
+                              <IconButton size="small" color="primary" onClick={() => openEditDialog(user)}>
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Screen Access">
+                              <IconButton size="small" onClick={() => { setSelectedUser(user); setScreenAccessOpen(true); }}>
+                                <TuneIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
+                              <MoreVertIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            {filteredUsers.length === 0 && (
+              <Box sx={{ py: 6, textAlign: 'center' }}>
+                <Typography color="text.secondary">No users found matching filters.</Typography>
+              </Box>
+            )}
+          </Paper>
+        </TabPanel>
+
+        {/* ═══════════════════ TAB 2: ROLE & PERMISSIONS ═══════════════════ */}
+        <TabPanel value={activeTab} index={1}>
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Workspace Role Matrix</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Default functional access levels configured across organizational roles. User counts reflect current workspace members.
+            </Typography>
+            <Grid container spacing={2}>
+              {[
+                { role: 'Super Admin', desc: 'Unrestricted full administrative rights across system & settings', perms: ['All Screens', 'User Management', 'Audit Logs', 'System Settings', 'Delete Projects/Issues'] },
+                { role: 'Admin', desc: 'Can manage workspace, projects, teams, and users', perms: ['All Screens', 'Create/Edit Users', 'Manage Projects', 'View Reports'] },
+                { role: 'Project Manager', desc: 'Can manage projects, sprints, members, and view reports', perms: ['Projects', 'Issues', 'Board', 'Reports', 'Team Management'] },
+                { role: 'Team Lead', desc: 'Can assign issues, edit team tickets, and direct workflows', perms: ['Issues', 'Board', 'Projects (Read)', 'Team Members'] },
+                { role: 'Member', desc: 'Standard team contributor with issue creation & comment rights', perms: ['Dashboard', 'Projects', 'Issues', 'Board', 'Notifications'] },
+                { role: 'Viewer', desc: 'Read-only access to projects and dashboard reports', perms: ['Dashboard (Read)', 'Projects (Read)', 'Reports (Read)'] },
+              ].map((r) => {
+                const count = roleCounts[r.role] || 0;
+                return (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={r.role}>
+                    <Card variant="outlined" sx={{ borderRadius: '10px', height: '100%', transition: 'border-color 0.2s', '&:hover': { borderColor: ROLE_COLOR[r.role] } }}>
+                      <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Chip
+                            label={r.role}
+                            size="small"
+                            sx={{ fontWeight: 700, fontSize: '0.72rem', bgcolor: ROLE_COLOR[r.role] + '18', color: ROLE_COLOR[r.role] }}
+                          />
+                          <Chip label={`${count} User${count !== 1 ? 's' : ''}`} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.68rem' }} />
                         </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                          {user.email}
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', mb: 1.5 }}>{r.desc}</Typography>
+                        <Divider sx={{ mb: 1 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                          Default Access
                         </Typography>
-                      </TableCell>
+                        <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+                          {r.perms.map((p) => (
+                            <Chip key={p} label={p} size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 600, bgcolor: 'background.default' }} />
+                          ))}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          </Paper>
+        </TabPanel>
+
+        {/* ═══════════════════ TAB 3: SCREEN ACCESS ═══════════════════ */}
+        <TabPanel value={activeTab} index={2}>
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, mb: 2, gap: 2 }}>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.25 }}>Granular Screen Access Matrix</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Click "Configure" on any user to toggle individual screen routes.
+                </Typography>
+              </Box>
+              <TextField
+                placeholder="Search users..."
+                size="small"
+                value={screenSearch}
+                onChange={(e) => setScreenSearch(e.target.value)}
+                sx={{ width: 220 }}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" color="action" /></InputAdornment> } }}
+              />
+            </Stack>
+
+            <Alert severity="info" sx={{ borderRadius: '10px', mb: 3, fontSize: '0.82rem' }}>
+              When a screen is disabled for a user, it is hidden from their sidebar and direct URL access returns <strong>403 Forbidden</strong>.
+            </Alert>
+
+            <Grid container spacing={2}>
+              {filteredScreenUsers.map((u) => {
+                const screenBadge = getScreenLabel(u);
+                const enabledScreens = Object.entries(u.screens || {}).filter(([, v]) => v !== false).length;
+                const totalScreens = Object.keys(DEFAULT_MEMBER_SCREENS).length;
+                return (
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={u.id}>
+                    <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', transition: 'border-color 0.2s', '&:hover': { borderColor: 'primary.main' } }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1.5 }}>
+                        <Avatar src={u.avatarUrl} sx={{ width: 32, height: 32, bgcolor: ROLE_COLOR[u.role] + '22', color: ROLE_COLOR[u.role], fontSize: '0.8rem', fontWeight: 700 }}>
+                          {u.firstName[0]}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.firstName} {u.lastName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">{u.role} · {u.team}</Typography>
+                        </Box>
+                        <Chip label={screenBadge.label} size="small" color={screenBadge.color} variant="outlined" sx={{ fontWeight: 700, fontSize: '0.62rem' }} />
+                      </Stack>
+
+                      {/* Screen progress */}
+                      <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">Screen access</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>{u.role === 'Super Admin' ? totalScreens : enabledScreens}/{totalScreens}</Typography>
+                      </Stack>
+                      <Box sx={{ height: 4, bgcolor: 'divider', borderRadius: '99px', overflow: 'hidden', mb: 1.5 }}>
+                        <Box sx={{ height: '100%', width: `${u.role === 'Super Admin' ? 100 : (enabledScreens / totalScreens) * 100}%`, bgcolor: screenBadge.color === 'error' ? 'error.main' : screenBadge.color === 'warning' ? 'warning.main' : 'primary.main', borderRadius: '99px' }} />
+                      </Box>
+
+                      <Divider sx={{ mb: 1.5 }} />
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        startIcon={<TuneIcon fontSize="small" />}
+                        onClick={() => { setSelectedUser(u); setScreenAccessOpen(true); }}
+                        sx={{ borderRadius: '8px', fontWeight: 700, textTransform: 'none' }}
+                        disabled={u.role === 'Super Admin'}
+                      >
+                        {u.role === 'Super Admin' ? 'Full Access (Locked)' : 'Configure Screens'}
+                      </Button>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+              {filteredScreenUsers.length === 0 && (
+                <Grid size={{ xs: 12 }}>
+                  <Box sx={{ py: 4, textAlign: 'center' }}>
+                    <Typography color="text.secondary">No users found.</Typography>
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+          </Paper>
+        </TabPanel>
+
+        {/* ═══════════════════ TAB 4: AUDIT LOGS ═══════════════════ */}
+        <TabPanel value={activeTab} index={3}>
+          <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', alignItems: { sm: 'center' } }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mr: 'auto' }}>System Audit Trail</Typography>
+              <TextField
+                placeholder="Search logs..."
+                size="small"
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                sx={{ width: 220 }}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" color="action" /></InputAdornment> } }}
+              />
+              <TextField
+                select
+                size="small"
+                label="Module"
+                value={auditModuleFilter}
+                onChange={(e) => setAuditModuleFilter(e.target.value)}
+                sx={{ minWidth: 160 }}
+              >
+                {auditModules.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+              </TextField>
+              <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                {filteredAuditLogs.length} entries
+              </Typography>
+            </Stack>
+
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: 'background.default' }}>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase' }}>Timestamp</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase' }}>Administrator</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase' }}>Action Performed</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase' }}>Module</TableCell>
+                    <TableCell sx={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase' }}>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredAuditLogs.map((log) => (
+                    <TableRow key={log.id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                      <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary', whiteSpace: 'nowrap' }}>{log.time}</TableCell>
                       <TableCell>
-                        <Chip label={user.role} size="small" color={user.role === 'Super Admin' ? 'primary' : 'default'} sx={{ fontWeight: 700, fontSize: '0.7rem' }} />
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>{log.actor}</Typography>
+                        <Typography variant="caption" color="text.secondary">{log.role}</Typography>
                       </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                          {user.team}
-                        </Typography>
-                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.82rem', maxWidth: 320 }}>{log.action}</TableCell>
+                      <TableCell><Chip label={log.module} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.68rem' }} /></TableCell>
                       <TableCell>
                         <Chip
-                          label={user.status}
+                          label={log.status}
                           size="small"
-                          color={getStatusChipColor(user.status)}
-                          sx={{ fontWeight: 700, fontSize: '0.7rem' }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" color="text.secondary">
-                          {user.lastLogin || 'Today'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.role === 'Super Admin' ? 'Full Access' : user.screens?.reports === false ? 'Limited' : 'Custom'}
-                          size="small"
-                          variant="outlined"
-                          color={user.screens?.reports === false ? 'warning' : 'success'}
+                          color={log.status === 'SUCCESS' ? 'success' : log.status === 'WARNING' ? 'warning' : 'error'}
                           sx={{ fontWeight: 700, fontSize: '0.68rem' }}
                         />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} sx={{ justifyContent: 'flex-end' }}>
-                          <Tooltip title="View User Details">
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setDrawerOpen(true);
-                              }}
-                            >
-                              <VisibilityIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip title="Configure Screen Access">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setScreenAccessOpen(true);
-                              }}
-                            >
-                              <TuneIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <IconButton size="small" onClick={(e) => handleMenuOpen(e, user)}>
-                            <MoreVertIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
-
-            {filteredUsers.length === 0 && (
-              <Box sx={{ py: 6, textAlign: 'center' }}>
-                <Typography variant="subtitle1" color="text.secondary">
-                  No users found matching filters.
-                </Typography>
+            {filteredAuditLogs.length === 0 && (
+              <Box sx={{ py: 5, textAlign: 'center' }}>
+                <Typography color="text.secondary">No audit logs found.</Typography>
               </Box>
             )}
           </Paper>
-        </CustomTabPanel>
+        </TabPanel>
 
-        {/* 2. ROLE & PERMISSIONS TAB */}
-        <CustomTabPanel value={activeTab} index={1}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              Workspace Default Role Matrix
-            </Typography>
+        {/* ═══════════════════ TAB 5: EMAIL TEMPLATES ═══════════════════ */}
+        <TabPanel value={activeTab} index={4}>
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>System Email Templates</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Default functional access levels configured across organizational roles.
+              Preview automated welcome and security notification templates sent to users.
             </Typography>
-
             <Grid container spacing={2}>
               {[
-                { role: 'Super Admin', desc: 'Unrestricted full administrative rights across system & settings', usersCount: 1 },
-                { role: 'Admin', desc: 'Can manage workspace, projects, teams, and users', usersCount: 2 },
-                { role: 'Project Manager', desc: 'Can manage projects, sprints, members, and view reports', usersCount: 3 },
-                { role: 'Team Lead', desc: 'Can assign issues, edit team tickets, and direct workflows', usersCount: 4 },
-                { role: 'Member', desc: 'Standard team contributor with issue creation & comment rights', usersCount: 15 },
-                { role: 'Viewer', desc: 'Read-only access to projects and dashboard reports', usersCount: 3 },
-              ].map((r) => (
-                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={r.role}>
-                  <Card variant="outlined" sx={{ borderRadius: '12px' }}>
-                    <CardContent>
-                      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                          {r.role}
-                        </Typography>
-                        <Chip label={`${r.usersCount} Users`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.825rem' }}>
-                        {r.desc}
-                      </Typography>
+                {
+                  title: '1. New User Onboarding Welcome Email',
+                  desc: 'Sent when a Super Admin provisions a new account directly. Includes temporary login credentials.',
+                  user: { firstName: 'David', lastName: 'Kim', email: 'david.kim@abctech.io', tempPassword: 'Temp@1234' },
+                },
+                {
+                  title: '2. Password Reset Notification',
+                  desc: 'Sent when an admin triggers password reset. Contains new temporary password and login link.',
+                  user: { firstName: 'Marcus', lastName: 'Vance', email: 'marcus.vance@abctech.io', tempPassword: 'Temp@1234' },
+                },
+                {
+                  title: '3. Account Status Change Alert',
+                  desc: 'Sent when an account is activated, deactivated, or locked by an administrator.',
+                  user: { firstName: 'Chloe', lastName: 'Dupont', email: 'chloe.dupont@abctech.io', tempPassword: undefined },
+                },
+                {
+                  title: '4. Security Alert - Suspicious Login',
+                  desc: 'Sent automatically when a login attempt is flagged from an unknown device or location.',
+                  user: { firstName: 'Alex', lastName: 'Rivera', email: 'alex.rivera@abctech.io', tempPassword: undefined },
+                },
+              ].map((t) => (
+                <Grid size={{ xs: 12, sm: 6 }} key={t.title}>
+                  <Card variant="outlined" sx={{ borderRadius: '10px', height: '100%' }}>
+                    <CardContent sx={{ p: 2.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.75 }}>{t.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem', mb: 2 }}>{t.desc}</Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<EmailIcon />}
+                        onClick={() => { setWelcomeUser(t.user); setWelcomeEmailOpen(true); }}
+                        sx={{ borderRadius: '8px', fontWeight: 700, textTransform: 'none' }}
+                      >
+                        Preview Template
+                      </Button>
                     </CardContent>
                   </Card>
                 </Grid>
               ))}
             </Grid>
           </Paper>
-        </CustomTabPanel>
+        </TabPanel>
 
-        {/* 3. SCREEN ACCESS TAB */}
-        <CustomTabPanel value={activeTab} index={2}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              Granular Screen Access Matrix
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Select any user in the list above to toggle individual screen routes or customize permission models.
-            </Typography>
-
-            <Alert severity="info" sx={{ borderRadius: '12px', mb: 3 }}>
-              When a screen is disabled for a user, its entry is hidden from their sidebar and direct URL access returns <strong>403 Forbidden</strong>.
-            </Alert>
-
-            <Grid container spacing={2}>
-              {usersList.slice(0, 6).map((u) => (
-                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={u.id}>
-                  <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px' }}>
-                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1.5 }}>
-                      <Avatar src={u.avatarUrl} sx={{ width: 32, height: 32 }}>{u.firstName[0]}</Avatar>
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                          {u.firstName} {u.lastName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">{u.role}</Typography>
-                      </Box>
-                    </Stack>
-                    <Divider sx={{ my: 1 }} />
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="small"
-                      startIcon={<TuneIcon />}
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setScreenAccessOpen(true);
-                      }}
-                      sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
-                    >
-                      Configure Screens
-                    </Button>
-                  </Paper>
-                </Grid>
-              ))}
+        {/* ═══════════════════ TAB 6: SYSTEM SETTINGS ═══════════════════ */}
+        <TabPanel value={activeTab} index={5}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>Authentication & Security</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Global authentication and security policy enforcement.</Typography>
+                <Divider sx={{ mb: 1 }} />
+                <Stack divider={<Divider />}>
+                  {settingToggle('Force Password Change on Reset', forcePasswordChange, setForcePasswordChange, 'Require users with temp passwords to reset on first login.')}
+                  {settingToggle('Strict Screen Route Guarding', strictRouteGuard, setStrictRouteGuard, 'Return HTTP 403 when a user navigates to an unchecked screen route.')}
+                  {settingToggle('Session Timeout (30 min)', sessionTimeout, setSessionTimeout, 'Auto-logout users after 30 minutes of inactivity.')}
+                  {settingToggle('Two-Factor Authentication', twoFactorAuth, setTwoFactorAuth, 'Require OTP verification on every login for all users.')}
+                </Stack>
+              </Paper>
             </Grid>
-          </Paper>
-        </CustomTabPanel>
-
-        {/* 4. AUDIT LOGS TAB */}
-        <CustomTabPanel value={activeTab} index={3}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              System Audit Trail
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Log of administrative actions, access modifications, and user state transitions.
-            </Typography>
-
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Administrator</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Action Performed</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Module</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {auditLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell sx={{ fontSize: '0.85rem', fontWeight: 600 }}>{log.time}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>{log.actor}</Typography>
-                        <Typography variant="caption" color="text.secondary">{log.role}</Typography>
-                      </TableCell>
-                      <TableCell sx={{ fontSize: '0.85rem' }}>{log.action}</TableCell>
-                      <TableCell><Chip label={log.module} size="small" variant="outlined" sx={{ fontWeight: 600 }} /></TableCell>
-                      <TableCell>
-                        <Chip label={log.status} size="small" color={log.status === 'SUCCESS' ? 'success' : 'warning'} sx={{ fontWeight: 700 }} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </CustomTabPanel>
-
-        {/* 5. EMAIL TEMPLATES TAB */}
-        <CustomTabPanel value={activeTab} index={4}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              System Email Templates
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Preview automated welcome and security notification templates.
-            </Typography>
-
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Card variant="outlined" sx={{ borderRadius: '12px', p: 1 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                      1. New User Onboarding Welcome Email
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Sent when a Super Admin provisions a new account directly. Includes temporary login credentials.
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<EmailIcon />}
-                      onClick={() => {
-                        setWelcomeUser({
-                          firstName: 'David',
-                          lastName: 'Kim',
-                          email: 'david.kim@abctech.io',
-                          tempPassword: 'Temp@1234',
-                        });
-                        setWelcomeEmailOpen(true);
-                      }}
-                      sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
-                    >
-                      Preview Email Template
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Card variant="outlined" sx={{ borderRadius: '12px', p: 1 }}>
-                  <CardContent>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                      2. Password Reset Notification
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Sent when an admin triggers password reset. Contains new temporary password and login link.
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<EmailIcon />}
-                      onClick={() => {
-                        setWelcomeUser({
-                          firstName: 'Marcus',
-                          lastName: 'Vance',
-                          email: 'marcus.vance@abctech.io',
-                          tempPassword: 'Temp@1234',
-                        });
-                        setWelcomeEmailOpen(true);
-                      }}
-                      sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
-                    >
-                      Preview Email Template
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper variant="outlined" sx={{ p: 3, borderRadius: '12px' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>Notifications & Maintenance</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>System-wide notification and operational settings.</Typography>
+                <Divider sx={{ mb: 1 }} />
+                <Stack divider={<Divider />}>
+                  {settingToggle('Email Notifications', emailNotify, setEmailNotify, 'Send automated email notifications on key system events.')}
+                  {settingToggle('Maintenance Mode', maintenanceMode, setMaintenanceMode, 'Lock out all non-admin users and show maintenance page.')}
+                </Stack>
+                {maintenanceMode && (
+                  <Alert severity="warning" sx={{ mt: 2, borderRadius: '8px', fontSize: '0.8rem' }}>
+                    <strong>Maintenance Mode is ON.</strong> All non-admin users are currently locked out.
+                  </Alert>
+                )}
+              </Paper>
             </Grid>
-          </Paper>
-        </CustomTabPanel>
+          </Grid>
+        </TabPanel>
 
-        {/* 6. SYSTEM SETTINGS TAB */}
-        <CustomTabPanel value={activeTab} index={5}>
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: '16px' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
-              System Governance Settings
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Global authentication and security policy enforcement.
-            </Typography>
-
-            <Stack spacing={2} sx={{ maxWidth: 'md' }}>
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Force Password Change on Admin Reset
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Require users with temporary passwords to reset password upon initial login.
-                  </Typography>
-                </Box>
-                <Switch defaultChecked color="primary" />
-              </Stack>
-              <Divider />
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                    Enable Strict Screen Access Route Guarding
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Return HTTP 403 Forbidden when a user navigates to an unchecked screen route.
-                  </Typography>
-                </Box>
-                <Switch defaultChecked color="primary" />
-              </Stack>
-            </Stack>
-          </Paper>
-        </CustomTabPanel>
       </Container>
 
-      {/* Target User Actions Menu */}
+      {/* ═══ ACTION MENU ═══ */}
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
-        slotProps={{
-          paper: { sx: { borderRadius: '12px', minWidth: 200 } },
-        }}
+        slotProps={{ paper: { sx: { borderRadius: '10px', minWidth: 210, boxShadow: '0 8px 24px rgba(15,23,42,0.12)' } } }}
       >
-        <MenuItem
-          onClick={() => {
-            if (targetUser) {
-              setSelectedUser(targetUser);
-              setDrawerOpen(true);
-            }
-            handleMenuClose();
-          }}
-        >
-          <VisibilityIcon fontSize="small" sx={{ mr: 1 }} /> View Details Drawer
+        <MenuItem onClick={() => { if (targetUser) { setSelectedUser(targetUser); setDrawerOpen(true); } handleMenuClose(); }}>
+          <VisibilityIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} /> View Details
         </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            if (targetUser) {
-              setSelectedUser(targetUser);
-              setScreenAccessOpen(true);
-            }
-            handleMenuClose();
-          }}
-        >
-          <TuneIcon fontSize="small" sx={{ mr: 1 }} /> Edit Screen Access
+        <MenuItem onClick={() => { if (targetUser) openEditDialog(targetUser); handleMenuClose(); }}>
+          <EditIcon fontSize="small" sx={{ mr: 1.5, color: 'primary.main' }} /> Edit User
         </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            if (targetUser) {
-              setSelectedUser(targetUser);
-              setFeaturePermissionsOpen(true);
-            }
-            handleMenuClose();
-          }}
-        >
-          <SecurityIcon fontSize="small" sx={{ mr: 1 }} /> Edit Feature Permissions
+        <MenuItem onClick={() => { if (targetUser) { setSelectedUser(targetUser); setScreenAccessOpen(true); } handleMenuClose(); }}>
+          <TuneIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} /> Configure Screen Access
         </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            if (targetUser) {
-              handleResetPassword(targetUser);
-            }
-            handleMenuClose();
-          }}
-        >
-          <LockResetIcon fontSize="small" sx={{ mr: 1 }} /> Reset Password
+        <MenuItem onClick={() => { if (targetUser) { setSelectedUser(targetUser); setFeaturePermissionsOpen(true); } handleMenuClose(); }}>
+          <SecurityIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} /> Feature Permissions
         </MenuItem>
-
+        <MenuItem onClick={() => { if (targetUser) handleResetPassword(targetUser); handleMenuClose(); }}>
+          <LockResetIcon fontSize="small" sx={{ mr: 1.5, color: 'warning.main' }} /> Reset Password
+        </MenuItem>
         <Divider />
-
-        {targetUser?.status === 'Active' ? (
-          <MenuItem
-            onClick={() => {
-              if (targetUser) handleUpdateStatus(targetUser, 'Inactive');
-              handleMenuClose();
-            }}
-            sx={{ color: 'warning.main' }}
-          >
-            <BlockIcon fontSize="small" sx={{ mr: 1 }} /> Deactivate Account
+        {targetUser?.status !== 'Active' ? (
+          <MenuItem onClick={() => { if (targetUser) handleUpdateStatus(targetUser, 'Active'); handleMenuClose(); }} sx={{ color: 'success.main' }}>
+            <CheckCircleIcon fontSize="small" sx={{ mr: 1.5 }} /> Activate Account
           </MenuItem>
         ) : (
-          <MenuItem
-            onClick={() => {
-              if (targetUser) handleUpdateStatus(targetUser, 'Active');
-              handleMenuClose();
-            }}
-            sx={{ color: 'success.main' }}
-          >
-            <CheckCircleIcon fontSize="small" sx={{ mr: 1 }} /> Activate Account
+          <MenuItem onClick={() => { if (targetUser) handleUpdateStatus(targetUser, 'Inactive'); handleMenuClose(); }} sx={{ color: 'warning.main' }}>
+            <BlockIcon fontSize="small" sx={{ mr: 1.5 }} /> Deactivate Account
           </MenuItem>
         )}
-
-        <MenuItem
-          onClick={() => {
-            if (targetUser) handleUpdateStatus(targetUser, 'Locked');
-            handleMenuClose();
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <LockIcon fontSize="small" sx={{ mr: 1 }} /> Lock Account
+        <MenuItem onClick={() => { if (targetUser) handleUpdateStatus(targetUser, 'Locked'); handleMenuClose(); }} sx={{ color: 'error.main' }}>
+          <LockIcon fontSize="small" sx={{ mr: 1.5 }} /> Lock Account
         </MenuItem>
       </Menu>
 
-      {/* User Details Drawer */}
+      {/* ═══ EDIT USER DIALOG ═══ */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: '14px' } } }}>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              <EditIcon color="primary" />
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>Edit User</Typography>
+                <Typography variant="caption" color="text.secondary">Update profile and access details</Typography>
+              </Box>
+            </Stack>
+            <IconButton size="small" onClick={() => setEditDialogOpen(false)}><CloseIcon /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers sx={{ py: 2.5 }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="First Name" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} fullWidth size="small" required />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Last Name" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} fullWidth size="small" required />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField label="Email Address" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} fullWidth size="small" required />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select label="Role" value={editRole} onChange={(e) => setEditRole(e.target.value as WorkspaceRole)} fullWidth size="small">
+                {ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select label="Team" value={editTeam} onChange={(e) => setEditTeam(e.target.value)} fullWidth size="small">
+                {TEAMS.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField select label="Status" value={editStatus} onChange={(e) => setEditStatus(e.target.value as UserStatus)} fullWidth size="small">
+                <MenuItem value="Active">Active</MenuItem>
+                <MenuItem value="Inactive">Inactive</MenuItem>
+                <MenuItem value="Locked">Locked</MenuItem>
+                <MenuItem value="Suspended">Suspended</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField label="Phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} fullWidth size="small" />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField label="Location" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} fullWidth size="small" />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setEditDialogOpen(false)} sx={{ borderRadius: '8px', fontWeight: 600 }}>Cancel</Button>
+          <Button variant="contained" disableElevation startIcon={<SaveIcon />} onClick={handleSaveEditUser} sx={{ borderRadius: '8px', fontWeight: 700 }}>
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ═══ CHILD MODALS & DRAWERS ═══ */}
       <UserDetailDrawer
         user={selectedUser}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        onEditScreenAccess={(u) => {
-          setSelectedUser(u);
-          setScreenAccessOpen(true);
-        }}
+        onEditScreenAccess={(u) => { setSelectedUser(u); setScreenAccessOpen(true); }}
         onResetPassword={(u) => handleResetPassword(u)}
       />
 
-      {/* Create User Modal */}
-      <CreateUserModal
-        open={createUserOpen}
-        onClose={() => setCreateUserOpen(false)}
-        onCreate={handleCreateUser}
-      />
+      <CreateUserModal open={createUserOpen} onClose={() => setCreateUserOpen(false)} onCreate={handleCreateUser} />
 
-      {/* Screen Access Modal */}
       <ScreenAccessModal
         user={selectedUser}
         open={screenAccessOpen}
@@ -859,7 +953,6 @@ export const AdministrationPage: React.FC = () => {
         onSave={handleSaveScreenAccess}
       />
 
-      {/* Feature Permissions Modal */}
       <FeaturePermissionsModal
         user={selectedUser}
         open={featurePermissionsOpen}
@@ -867,12 +960,7 @@ export const AdministrationPage: React.FC = () => {
         onSave={handleSaveFeaturePermissions}
       />
 
-      {/* Welcome Email Modal */}
-      <WelcomeEmailModal
-        user={welcomeUser}
-        open={welcomeEmailOpen}
-        onClose={() => setWelcomeEmailOpen(false)}
-      />
+      <WelcomeEmailModal user={welcomeUser} open={welcomeEmailOpen} onClose={() => setWelcomeEmailOpen(false)} />
     </Box>
   );
 };

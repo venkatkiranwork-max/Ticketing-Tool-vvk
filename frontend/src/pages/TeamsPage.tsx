@@ -21,10 +21,12 @@ import type { MockTeam } from '@/mock/teams';
 import { mockUsers } from '@/mock/users';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/features/auth/permissions';
+import { useUsersQuery } from '@/hooks/useUsersQuery';
 
 export function TeamsPage() {
   const currentUser = useAuthStore((s) => s.user) || mockUsers[0];
   const canManageTeams = hasPermission(currentUser, 'manage_teams');
+  const { data: allUsers = [] } = useUsersQuery();
 
   const [teams, setTeams] = useState<MockTeam[]>(mockTeams);
   const [openModal, setOpenModal] = useState(false);
@@ -142,7 +144,7 @@ export function TeamsPage() {
             fullWidth
           />
           <Select label="Team Lead" value={teamLeadId} onChange={(e) => setTeamLeadId(e.target.value)} fullWidth>
-            {mockUsers.map((u) => (
+            {allUsers.map((u) => (
               <MenuItem key={u.id} value={u.id}>
                 {u.firstName} {u.lastName} ({u.team})
               </MenuItem>

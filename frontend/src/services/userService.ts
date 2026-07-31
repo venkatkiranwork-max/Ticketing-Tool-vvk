@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
 import { USE_MOCK_DATA } from '@/mock/config';
-import { mockUsers } from '@/mock/users';
+import { mockUsers, saveUsersToStorage } from '@/mock/users';
 import type { MockUser, WorkspaceRole } from '@/mock/users';
 import type { User } from '@/types/api';
 
@@ -34,6 +34,7 @@ export const userService = {
       if (found) {
         if (updates.avatarUrl) found.avatarUrl = updates.avatarUrl;
         if (updates.phone) found.phone = updates.phone;
+        saveUsersToStorage(mockUsers);
       }
       return (found || mockUsers[0]) as unknown as User;
     }
@@ -61,6 +62,7 @@ export const userService = {
         completedTasksCount: 0,
       };
       mockUsers.unshift(newUser);
+      saveUsersToStorage(mockUsers);
       return newUser;
     }
     const res = (await apiClient.post('/users/invite', data)) as { data?: MockUser } & MockUser;
@@ -87,6 +89,7 @@ export const userService = {
         completedTasksCount: 0,
       };
       mockUsers.unshift(newUser);
+      saveUsersToStorage(mockUsers);
       return newUser;
     }
     const res = (await apiClient.post('/users/direct', data)) as { data?: MockUser } & MockUser;
@@ -98,6 +101,7 @@ export const userService = {
       const user = mockUsers.find((u) => u.id === id || (u as any)._id === id);
       if (user) {
         user.status = user.status === 'Active' ? 'Inactive' : 'Active';
+        saveUsersToStorage(mockUsers);
       }
       return user || mockUsers[0];
     }
@@ -110,6 +114,7 @@ export const userService = {
       const user = mockUsers.find((u) => u.id === id || (u as any)._id === id);
       if (user) {
         Object.assign(user, updates);
+        saveUsersToStorage(mockUsers);
       }
       return user || mockUsers[0];
     }

@@ -157,7 +157,7 @@ export function LoginPage() {
               <Chip label="Super Admin" size="small" color="primary" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
             </Button>
 
-            {/* Account 2: Ravi (Admin) */}
+            {/* Account 2: Ravi (Project Manager) */}
             <Button
               variant="outlined"
               size="small"
@@ -168,16 +168,16 @@ export function LoginPage() {
                 textTransform: 'none',
                 justify: 'space-between',
                 borderRadius: '10px',
-                borderColor: 'rgba(56, 189, 248, 0.25)',
-                background: 'rgba(56, 189, 248, 0.05)',
+                borderColor: 'rgba(16, 185, 129, 0.25)',
+                background: 'rgba(16, 185, 129, 0.05)',
                 '&:hover': {
-                  borderColor: 'secondary.main',
-                  background: 'rgba(56, 189, 248, 0.15)',
+                  borderColor: 'success.main',
+                  background: 'rgba(16, 185, 129, 0.15)',
                 },
               }}
             >
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem', bgcolor: '#0284c7', fontWeight: 800 }}>R</Avatar>
+                <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem', bgcolor: '#10b981', fontWeight: 800 }}>R</Avatar>
                 <Box sx={{ textAlign: 'left' }}>
                   <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>
                     Ravi Sharma
@@ -187,7 +187,7 @@ export function LoginPage() {
                   </Typography>
                 </Box>
               </Stack>
-              <Chip label="Admin" size="small" color="secondary" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
+              <Chip label="Project Manager" size="small" color="success" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
             </Button>
 
             {/* Account 3: Mani (PM) */}

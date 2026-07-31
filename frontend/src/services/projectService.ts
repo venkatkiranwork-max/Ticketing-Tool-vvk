@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
 import { USE_MOCK_DATA } from '@/mock/config';
-import { mockProjects } from '@/mock/projects';
+import { mockProjects, saveProjectsToStorage } from '@/mock/projects';
 import type { MockProject } from '@/mock/projects';
 
 export const projectService = {
@@ -33,6 +33,7 @@ export const projectService = {
         lastUpdated: 'Just now',
       };
       mockProjects.unshift(newProj);
+      saveProjectsToStorage(mockProjects);
       return newProj;
     }
     const res = (await apiClient.post('/projects', data)) as { data?: MockProject } & MockProject;
@@ -42,7 +43,10 @@ export const projectService = {
   async archiveProject(id: string): Promise<MockProject> {
     if (USE_MOCK_DATA) {
       const p = mockProjects.find((proj) => proj.id === id || proj._id === id);
-      if (p) p.status = 'completed';
+      if (p) {
+        p.status = 'completed';
+        saveProjectsToStorage(mockProjects);
+      }
       return p || mockProjects[0];
     }
     const res = (await apiClient.patch(`/projects/${id}/archive`)) as { data?: MockProject } & MockProject;
@@ -54,6 +58,7 @@ export const projectService = {
       const p = mockProjects.find((proj) => proj.id === id || proj._id === id);
       if (p) {
         Object.assign(p, updates);
+        saveProjectsToStorage(mockProjects);
       }
       return p || mockProjects[0];
     }

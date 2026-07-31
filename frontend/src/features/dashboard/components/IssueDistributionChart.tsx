@@ -30,7 +30,7 @@ export function IssueDistributionChart({ distribution }: IssueDistributionChartP
       <CardContent sx={{ p: '24px !important', height: '100%', display: 'flex', flexDirection: 'column' }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
-            Issue Distribution
+            Issue Distributionss
           </Typography>
           <Select
             value="All Projects"

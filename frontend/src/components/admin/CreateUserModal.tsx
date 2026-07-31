@@ -34,7 +34,6 @@ interface CreateUserModalProps {
 
 const ROLES: WorkspaceRole[] = [
   'Super Admin',
-  'Admin',
   'Project Manager',
   'Team Lead',
   'Member',

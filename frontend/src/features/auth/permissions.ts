@@ -4,14 +4,12 @@ import type { ScreenKey, FeaturePermissionKey } from '@/mock/users';
 
 export type WorkspaceRole =
   | 'Super Admin'
-  | 'Admin'
   | 'Project Manager'
   | 'Team Lead'
   | 'Member'
   | 'Viewer'
   | 'Guest'
   | 'super_admin'
-  | 'admin'
   | 'member'
   | 'viewer';
 
@@ -83,40 +81,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     'comment_issues',
     'upload_attachments',
   ],
-  Admin: [
-    'invite_users',
-    'create_user_direct',
-    'manage_teams',
-    'manage_projects',
-    'manage_sprints',
-    'manage_project_members',
-    'create_issues',
-    'edit_all_issues',
-    'edit_assigned_issues',
-    'assign_issues',
-    'change_issue_status',
-    'delete_issues',
-    'view_reports',
-    'comment_issues',
-    'upload_attachments',
-  ],
-  admin: [
-    'invite_users',
-    'create_user_direct',
-    'manage_teams',
-    'manage_projects',
-    'manage_sprints',
-    'manage_project_members',
-    'create_issues',
-    'edit_all_issues',
-    'edit_assigned_issues',
-    'assign_issues',
-    'change_issue_status',
-    'delete_issues',
-    'view_reports',
-    'comment_issues',
-    'upload_attachments',
-  ],
+
   'Project Manager': [
     'manage_projects',
     'manage_sprints',
@@ -139,16 +104,22 @@ export const ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
     'upload_attachments',
   ],
   Member: [
+    'create_issues',
+    'assign_issues',
     'edit_assigned_issues',
     'change_issue_status',
     'comment_issues',
     'upload_attachments',
+    'view_reports',
   ],
   member: [
+    'create_issues',
+    'assign_issues',
     'edit_assigned_issues',
     'change_issue_status',
     'comment_issues',
     'upload_attachments',
+    'view_reports',
   ],
   Viewer: ['view_reports'],
   viewer: ['view_reports'],
@@ -175,12 +146,10 @@ export function hasPermission(user: UserLike | null | undefined, permission: Per
 const ROLE_DEFAULT_SCREENS: Record<string, ScreenKey[]> = {
   'Super Admin': ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
   super_admin:   ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
-  Admin:         ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
-  admin:         ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
   'Project Manager': ['dashboard', 'projects', 'issues', 'board', 'teams', 'reports', 'notifications', 'profile', 'settings'],
   'Team Lead':   ['dashboard', 'projects', 'issues', 'board', 'teams', 'notifications', 'profile', 'settings'],
-  Member:        ['dashboard', 'projects', 'issues', 'board', 'notifications', 'profile', 'settings'],
-  member:        ['dashboard', 'projects', 'issues', 'board', 'notifications', 'profile', 'settings'],
+  Member:        ['dashboard', 'projects', 'issues', 'board', 'teams', 'reports', 'notifications', 'profile', 'settings'],
+  member:        ['dashboard', 'projects', 'issues', 'board', 'teams', 'reports', 'notifications', 'profile', 'settings'],
   Viewer:        ['dashboard', 'projects', 'reports', 'notifications', 'profile'],
   viewer:        ['dashboard', 'projects', 'reports', 'notifications', 'profile'],
   Guest:         ['dashboard', 'notifications', 'profile'],
@@ -191,7 +160,6 @@ export function hasScreenAccess(user: UserLike | null | undefined, screenKey: Sc
 
   const normalizedRole =
     user.role === 'super_admin' ? 'Super Admin'
-    : user.role === 'admin' ? 'Admin'
     : user.role === 'member' ? 'Member'
     : user.role === 'viewer' ? 'Viewer'
     : user.role;
@@ -223,9 +191,9 @@ export function hasFeaturePermission(user: UserLike | null | undefined, featureK
 export function filterProjectsForUser(projects: MockProject[], user: UserLike | null | undefined): MockProject[] {
   if (!user) return [];
   if (!Array.isArray(projects)) return [];
-  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role === 'admin' ? 'Admin' : user.role === 'member' ? 'Member' : user.role === 'viewer' ? 'Viewer' : user.role;
+  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role === 'member' ? 'Member' : user.role === 'viewer' ? 'Viewer' : user.role;
 
-  if (normalizedRole === 'Super Admin' || normalizedRole === 'Admin' || normalizedRole === 'Viewer') {
+  if (normalizedRole === 'Super Admin' || normalizedRole === 'Viewer') {
     return projects;
   }
 
@@ -255,9 +223,9 @@ export function filterProjectsForUser(projects: MockProject[], user: UserLike | 
 export function filterIssuesForUser(issues: MockIssue[], user: UserLike | null | undefined): MockIssue[] {
   if (!user) return [];
   if (!Array.isArray(issues)) return [];
-  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role === 'admin' ? 'Admin' : user.role === 'member' ? 'Member' : user.role === 'viewer' ? 'Viewer' : user.role;
+  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role === 'member' ? 'Member' : user.role === 'viewer' ? 'Viewer' : user.role;
 
-  if (normalizedRole === 'Super Admin' || normalizedRole === 'Admin' || normalizedRole === 'Viewer') {
+  if (normalizedRole === 'Super Admin' || normalizedRole === 'Viewer') {
     return issues;
   }
 
@@ -294,7 +262,6 @@ export function getNavigationForUser(user: UserLike | null | undefined): NavItem
 
   const normalizedRole =
     user.role === 'super_admin' ? 'Super Admin'
-    : user.role === 'admin' ? 'Admin'
     : user.role === 'member' ? 'Member'
     : user.role === 'viewer' ? 'Viewer'
     : user.role;

@@ -2,7 +2,6 @@ import type { User } from '@/types/api';
 
 export type WorkspaceRole =
   | 'Super Admin'
-  | 'Admin'
   | 'Project Manager'
   | 'Team Lead'
   | 'Member'
@@ -134,7 +133,7 @@ export function toMockUser(user: User | null | undefined): MockUser {
   };
 }
 
-export const mockUsers: MockUser[] = [
+const INITIAL_MOCK_USERS: MockUser[] = [
   {
     id: 'usr-1',
     employeeId: 'EMP-1001',
@@ -168,7 +167,7 @@ export const mockUsers: MockUser[] = [
     firstName: 'Ravi',
     lastName: 'Sharma',
     email: 'ravi@gmail.com',
-    role: 'Admin',
+    role: 'Project Manager',
     team: 'UI/UX',
     status: 'Active',
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
@@ -211,3 +210,24 @@ export const mockUsers: MockUser[] = [
     permissions: DEFAULT_FEATURE_PERMISSIONS,
   },
 ];
+
+const STORAGE_KEY = 'mock_users_db';
+const loadUsers = (): MockUser[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : INITIAL_MOCK_USERS;
+  } catch {
+    return INITIAL_MOCK_USERS;
+  }
+};
+
+export const saveUsersToStorage = (users: MockUser[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.error('Failed to save mock users', e);
+  }
+};
+
+export const mockUsers: MockUser[] = loadUsers();
+

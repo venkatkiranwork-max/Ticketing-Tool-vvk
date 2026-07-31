@@ -24,7 +24,7 @@ export interface MockProject {
   lastUpdated: string;
 }
 
-export const mockProjects: MockProject[] = [
+const INITIAL_MOCK_PROJECTS: MockProject[] = [
   {
     _id: 'prj-1',
     id: 'prj-1',
@@ -47,3 +47,24 @@ export const mockProjects: MockProject[] = [
     lastUpdated: '10 mins ago',
   },
 ];
+
+const STORAGE_KEY = 'mock_projects_db';
+const loadProjects = (): MockProject[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : INITIAL_MOCK_PROJECTS;
+  } catch {
+    return INITIAL_MOCK_PROJECTS;
+  }
+};
+
+export const saveProjectsToStorage = (projects: MockProject[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  } catch (e) {
+    console.error('Failed to save mock projects', e);
+  }
+};
+
+export const mockProjects: MockProject[] = loadProjects();
+

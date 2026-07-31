@@ -42,7 +42,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ProjectCard } from '@/components/ui/ProjectCard';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { mockProjects } from '@/mock/projects';
+import { mockProjects, saveProjectsToStorage } from '@/mock/projects';
 import type { MockProject, ProjectMember } from '@/mock/projects';
 import { mockUsers, toMockUser } from '@/mock/users';
 import { mockTeams } from '@/mock/teams';
@@ -134,9 +134,9 @@ export function ProjectPage() {
       if (catalogTab === 'my') {
         const isManagedByMe = p.members?.some((m: any) =>
           (m?.user?.id === currentUser?.id || m?.userId === currentUser?.id) &&
-          (m?.projectRole === 'Project Admin' || m?.projectRole === 'Lead Developer' || m?.role === 'owner' || m?.role === 'admin')
+          (m?.projectRole === 'Project Admin' || m?.projectRole === 'Lead Developer' || m?.role === 'owner')
         );
-        return matchesSearch && matchesTeam && (isManagedByMe || currentUser.role === 'Super Admin' || currentUser.role === 'Admin' || (currentUser.role as string) === 'super_admin' || (currentUser.role as string) === 'admin');
+        return matchesSearch && matchesTeam && (isManagedByMe || currentUser.role === 'Super Admin' || (currentUser.role as string) === 'super_admin');
       }
 
       if (catalogTab === 'archived') {
@@ -227,9 +227,18 @@ export function ProjectPage() {
         // Filter out existing users to avoid duplicate additions
         const existingUserIds = new Set((p.members || []).map((m: any) => m.user?.id || m.userId));
         const filteredNewMembers = newMembers.filter((nm) => !existingUserIds.has(nm.user.id));
+        const updatedMembers = [...(p.members || []), ...filteredNewMembers];
+        
+        // Update the singleton mockProjects array
+        const sharedIdx = mockProjects.findIndex((mp) => mp.id === p.id || mp._id === p._id);
+        if (sharedIdx !== -1) {
+          mockProjects[sharedIdx].members = updatedMembers;
+          saveProjectsToStorage(mockProjects);
+        }
+        
         return {
           ...p,
-          members: [...(p.members || []), ...filteredNewMembers],
+          members: updatedMembers,
         };
       }
       return p;

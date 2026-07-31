@@ -59,6 +59,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import {
   mockUsers,
+  saveUsersToStorage,
   type MockUser,
   type UserStatus,
   type ScreenKey,
@@ -87,7 +88,6 @@ function TabPanel({ children, value, index }: { children?: React.ReactNode; inde
 // ─── Role colors ────────────────────────────────────────────────────────────
 const ROLE_COLOR: Record<string, string> = {
   'Super Admin': '#6366f1',
-  Admin: '#3b82f6',
   'Project Manager': '#10b981',
   'Team Lead': '#f59e0b',
   Member: '#64748b',
@@ -102,7 +102,7 @@ const STATUS_COLOR: Record<string, 'success' | 'default' | 'warning' | 'error'> 
   Locked: 'error',
 };
 
-const ROLES: WorkspaceRole[] = ['Super Admin', 'Admin', 'Project Manager', 'Team Lead', 'Member', 'Viewer', 'Guest'];
+const ROLES: WorkspaceRole[] = ['Super Admin', 'Project Manager', 'Team Lead', 'Member', 'Viewer', 'Guest'];
 const TEAMS = ['IT', 'UI/UX', 'Testing', 'Engineering', 'Product Management', 'DevOps & SRE', 'Frontend', 'Backend', 'QA Automation'];
 
 // ─── Main Component ─────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ export const AdministrationPage: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState([
     { id: '1', time: '10:30 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Granted Reports access to Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
     { id: '2', time: '10:45 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Locked Mani Verma account', module: 'User Status', status: 'WARNING' },
-    { id: '3', time: '11:10 AM', actor: 'Ravi Sharma', role: 'Admin', action: 'Created Enterprise Platform Core project', module: 'Projects', status: 'SUCCESS' },
+    { id: '3', time: '11:10 AM', actor: 'Ravi Sharma', role: 'Project Manager', action: 'Created Enterprise Platform Core project', module: 'Projects', status: 'SUCCESS' },
     { id: '4', time: '01:15 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Reset password for Mani Verma', module: 'User Management', status: 'SUCCESS' },
     { id: '5', time: '02:00 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Updated screen permissions for Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
     { id: '6', time: '03:30 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Activated account for Mani Verma', module: 'User Status', status: 'SUCCESS' },
@@ -268,6 +268,7 @@ export const AdministrationPage: React.FC = () => {
     setUsersList((prev) => [newUser, ...prev]);
     // Also push to shared mockUsers array so login works with Temp@1234
     mockUsers.unshift(newUser);
+    saveUsersToStorage(mockUsers);
     // Invalidate React Query cache so Add Members dialog shows the new user
     queryClient.setQueryData(queryKeys.users, (old: MockUser[] = []) => [newUser, ...old]);
     queryClient.invalidateQueries({ queryKey: queryKeys.users });
@@ -281,7 +282,10 @@ export const AdministrationPage: React.FC = () => {
     setUsersList((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
     // Sync status to shared mockUsers and invalidate query cache
     const sharedIdx = mockUsers.findIndex((u) => u.id === user.id);
-    if (sharedIdx !== -1) mockUsers[sharedIdx].status = newStatus;
+    if (sharedIdx !== -1) {
+      mockUsers[sharedIdx].status = newStatus;
+      saveUsersToStorage(mockUsers);
+    }
     queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success(`${user.firstName}'s status set to ${newStatus}`);
     addAuditLog(`Changed status for ${user.firstName} ${user.lastName} to ${newStatus}`, 'User Status', newStatus === 'Locked' ? 'WARNING' : 'SUCCESS');
@@ -296,6 +300,13 @@ export const AdministrationPage: React.FC = () => {
 
   const handleSaveScreenAccess = (userId: string, updatedScreens: Record<ScreenKey, boolean>) => {
     setUsersList((prev) => prev.map((u) => (u.id === userId ? { ...u, screens: updatedScreens } : u)));
+    // Sync to shared mockUsers
+    const sharedIdx = mockUsers.findIndex((u) => u.id === userId);
+    if (sharedIdx !== -1) {
+      mockUsers[sharedIdx].screens = updatedScreens;
+      saveUsersToStorage(mockUsers);
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success('Screen access updated');
     const u = usersList.find((x) => x.id === userId);
     if (u) addAuditLog(`Updated screen permissions for ${u.firstName} ${u.lastName}`, 'Screen Access');
@@ -303,6 +314,13 @@ export const AdministrationPage: React.FC = () => {
 
   const handleSaveFeaturePermissions = (userId: string, updatedPermissions: Record<FeaturePermissionKey, boolean>) => {
     setUsersList((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: updatedPermissions } : u)));
+    // Sync to shared mockUsers
+    const sharedIdx = mockUsers.findIndex((u) => u.id === userId);
+    if (sharedIdx !== -1) {
+      mockUsers[sharedIdx].permissions = updatedPermissions;
+      saveUsersToStorage(mockUsers);
+    }
+    queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success('Feature permissions updated');
     const u = usersList.find((x) => x.id === userId);
     if (u) addAuditLog(`Updated feature permissions for ${u.firstName} ${u.lastName}`, 'Screen Access');
@@ -329,7 +347,10 @@ export const AdministrationPage: React.FC = () => {
     );
     // Sync to shared mockUsers array for login consistency
     const sharedIdx = mockUsers.findIndex((u) => u.id === editUser.id);
-    if (sharedIdx !== -1) Object.assign(mockUsers[sharedIdx], updated);
+    if (sharedIdx !== -1) {
+      Object.assign(mockUsers[sharedIdx], updated);
+      saveUsersToStorage(mockUsers);
+    }
     // Invalidate query cache so the updated user appears in Add Members dialog
     queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success(`${editFirstName} ${editLastName}'s profile updated`);
@@ -576,10 +597,9 @@ export const AdministrationPage: React.FC = () => {
             <Grid container spacing={2}>
               {[
                 { role: 'Super Admin', desc: 'Unrestricted full administrative rights across system & settings', perms: ['All Screens', 'User Management', 'Audit Logs', 'System Settings', 'Delete Projects/Issues'] },
-                { role: 'Admin', desc: 'Can manage workspace, projects, teams, and users', perms: ['All Screens', 'Create/Edit Users', 'Manage Projects', 'View Reports'] },
                 { role: 'Project Manager', desc: 'Can manage projects, sprints, members, and view reports', perms: ['Projects', 'Issues', 'Board', 'Reports', 'Team Management'] },
                 { role: 'Team Lead', desc: 'Can assign issues, edit team tickets, and direct workflows', perms: ['Issues', 'Board', 'Projects (Read)', 'Team Members'] },
-                { role: 'Member', desc: 'Standard team contributor with issue creation & comment rights', perms: ['Dashboard', 'Projects', 'Issues', 'Board', 'Notifications'] },
+                { role: 'Member', desc: 'Active team contributor with issue creation, assignment, comment & report rights', perms: ['Dashboard', 'Projects', 'Issues', 'Board', 'Teams', 'Reports', 'Notifications'] },
                 { role: 'Viewer', desc: 'Read-only access to projects and dashboard reports', perms: ['Dashboard (Read)', 'Projects (Read)', 'Reports (Read)'] },
               ].map((r) => {
                 const count = roleCounts[r.role] || 0;

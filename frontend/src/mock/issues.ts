@@ -63,7 +63,7 @@ export interface MockIssue {
   updatedAt: string;
 }
 
-export const mockIssues: MockIssue[] = [
+const INITIAL_MOCK_ISSUES: MockIssue[] = [
   {
     _id: 'iss-1',
     id: 'iss-1',
@@ -277,3 +277,24 @@ export const mockIssues: MockIssue[] = [
     updatedAt: '2026-07-22T10:00:00.000Z',
   },
 ];
+
+const STORAGE_KEY = 'mock_issues_db';
+const loadIssues = (): MockIssue[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : INITIAL_MOCK_ISSUES;
+  } catch {
+    return INITIAL_MOCK_ISSUES;
+  }
+};
+
+export const saveIssuesToStorage = (issues: MockIssue[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(issues));
+  } catch (e) {
+    console.error('Failed to save mock issues', e);
+  }
+};
+
+export const mockIssues: MockIssue[] = loadIssues();
+

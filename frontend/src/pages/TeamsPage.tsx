@@ -93,7 +93,7 @@ export function TeamsPage() {
         projectCount: 1,
         openIssuesCount: 4,
         velocity: 25,
-        currentSprint: 'Sprint 24 (Q3 Platform)',
+        currentSprint: '(Q3 Platform)',
         color,
         createdAt: new Date().toISOString(),
       };

@@ -39,11 +39,11 @@ function stringAvatar(name: string) {
 
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
-    <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '100%' }}>
+    <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '20%' }}>
       <CardContent sx={{ p: '24px !important' }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
-            Team Activity
+            Team Activitysssss
           </Typography>
           <Link href="#" underline="hover" sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#6366f1' }}>
             View all

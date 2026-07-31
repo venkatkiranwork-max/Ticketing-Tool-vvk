@@ -147,7 +147,7 @@ export function UsersPage() {
 
   const handleToggleStatus = async (id: string) => {
     if (!canManageUsers) {
-      toast.error('Only Super Admin or Admin can deactivate users');
+      toast.error('Only Super Admin can deactivate users');
       return;
     }
     await toggleUserStatus(id);
@@ -223,7 +223,6 @@ export function UsersPage() {
               options={[
                 { label: 'All Roles', value: 'all' },
                 { label: 'Super Admin', value: 'Super Admin' },
-                { label: 'Admin', value: 'Admin' },
                 { label: 'Project Manager', value: 'Project Manager' },
                 { label: 'Team Lead', value: 'Team Lead' },
                 { label: 'Member', value: 'Member' },
@@ -300,14 +299,10 @@ export function UsersPage() {
                           bgcolor:
                             user.role === 'Super Admin'
                               ? 'rgba(99, 102, 241, 0.15)'
-                              : user.role === 'Admin'
-                              ? 'rgba(59, 130, 246, 0.15)'
                               : 'action.hover',
                           color:
                             user.role === 'Super Admin'
                               ? '#6366f1'
-                              : user.role === 'Admin'
-                              ? '#3b82f6'
                               : 'text.primary',
                         }}
                       />
@@ -382,7 +377,6 @@ export function UsersPage() {
               />
               <Select label="Workspace Role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as UserRole)} fullWidth>
                 <MenuItem value="Super Admin">Super Admin</MenuItem>
-                <MenuItem value="Admin">Admin</MenuItem>
                 <MenuItem value="Project Manager">Project Manager</MenuItem>
                 <MenuItem value="Team Lead">Team Lead</MenuItem>
                 <MenuItem value="Member">Member</MenuItem>
@@ -422,7 +416,6 @@ export function UsersPage() {
               <Stack direction="row" spacing={2}>
                 <Select label="Role" value={directRole} onChange={(e) => setDirectRole(e.target.value as UserRole)} fullWidth>
                   <MenuItem value="Super Admin">Super Admin</MenuItem>
-                  <MenuItem value="Admin">Admin</MenuItem>
                   <MenuItem value="Project Manager">Project Manager</MenuItem>
                   <MenuItem value="Team Lead">Team Lead</MenuItem>
                   <MenuItem value="Member">Member</MenuItem>
@@ -475,7 +468,6 @@ export function UsersPage() {
           <Stack direction="row" spacing={2}>
             <Select label="Workspace Role" value={editRole} onChange={(e) => setEditRole(e.target.value as UserRole)} fullWidth>
               <MenuItem value="Super Admin">Super Admin</MenuItem>
-              <MenuItem value="Admin">Admin</MenuItem>
               <MenuItem value="Project Manager">Project Manager</MenuItem>
               <MenuItem value="Team Lead">Team Lead</MenuItem>
               <MenuItem value="Member">Member</MenuItem>

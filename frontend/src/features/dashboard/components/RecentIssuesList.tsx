@@ -1,4 +1,4 @@
-import { Card, CardContent, Typography, Box, Stack, Avatar, Chip, Link } from '@mui/material';
+import { Card, CardContent, Typography, Stack, Avatar, Chip, Link } from '@mui/material';
 
 interface RecentIssuesListProps {
   issues: Array<{
@@ -30,7 +30,7 @@ export function RecentIssuesList({ issues }: RecentIssuesListProps) {
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '100%' }}>
       <CardContent sx={{ p: '24px !important' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
             Recent Issues
           </Typography>
@@ -43,7 +43,7 @@ export function RecentIssuesList({ issues }: RecentIssuesListProps) {
           {issues.map((issue) => {
             const s = statusConfig[issue.status] || statusConfig.todo;
             return (
-              <Stack key={issue._id} direction="row" alignItems="center" spacing={2}>
+              <Stack key={issue._id} direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: '#6366f1', width: 60, flexShrink: 0 }}>
                   {issue.key}
                 </Typography>

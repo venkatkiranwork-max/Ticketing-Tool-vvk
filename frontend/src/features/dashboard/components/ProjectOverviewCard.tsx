@@ -42,7 +42,7 @@ export function ProjectOverviewCard({ project }: ProjectOverviewCardProps) {
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '100%' }}>
       <CardContent sx={{ p: '24px !important', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Stack direction="row" alignItems="center" spacing={2} mb={3}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', mb: 3 }}>
           <Box
             sx={{
               width: 48,
@@ -66,7 +66,7 @@ export function ProjectOverviewCard({ project }: ProjectOverviewCardProps) {
 
         <Box sx={{ flexGrow: 1 }} />
 
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end" mb={1}>
+        <Stack direction="row" sx={{ alignItems: 'flex-end', justifyContent: 'space-between', mb: 1 }}>
           <Box sx={{ width: '100%', mr: 2 }}>
             <Box sx={{ width: '100%', height: 6, bgcolor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
               <Box sx={{ width: `${project.progress}%`, height: '100%', bgcolor: color, borderRadius: '4px' }} />
@@ -77,7 +77,7 @@ export function ProjectOverviewCard({ project }: ProjectOverviewCardProps) {
           </Typography>
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
             {project.completedIssues} / {project.totalIssues} issues
           </Typography>

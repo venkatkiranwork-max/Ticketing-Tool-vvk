@@ -26,14 +26,14 @@ export function PriorityBreakdown({ priorities }: PriorityBreakdownProps) {
             const percent = Math.round((count / total) * 100);
 
             return (
-              <Stack key={item.key} direction="row" alignItems="center" spacing={2}>
+              <Stack key={item.key} direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, width: 55, flexShrink: 0 }}>
                   {item.label}
                 </Typography>
                 <Box sx={{ flexGrow: 1, height: 6, bgcolor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                   <Box sx={{ width: `${percent}%`, height: '100%', bgcolor: item.color, borderRadius: '4px' }} />
                 </Box>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ width: 60, flexShrink: 0, justifyContent: 'flex-end' }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', width: 60, flexShrink: 0, justifyContent: 'flex-end' }}>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {count}
                   </Typography>

@@ -28,7 +28,7 @@ export function IssueDistributionChart({ distribution }: IssueDistributionChartP
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '100%' }}>
       <CardContent sx={{ p: '24px !important', height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
             Issue Distribution
           </Typography>
@@ -48,7 +48,7 @@ export function IssueDistributionChart({ distribution }: IssueDistributionChartP
           </Select>
         </Stack>
 
-        <Stack direction="row" spacing={3} alignItems="center" sx={{ flexGrow: 1 }}>
+        <Stack direction="row" spacing={3} sx={{ alignItems: 'center', flexGrow: 1 }}>
           <Box sx={{ width: 140, height: 140, position: 'relative', flexShrink: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -92,14 +92,14 @@ export function IssueDistributionChart({ distribution }: IssueDistributionChartP
 
           <Stack spacing={1.5} sx={{ flexGrow: 1 }}>
             {data.map((item) => (
-              <Stack key={item.name} direction="row" justifyContent="space-between" alignItems="center">
-                <Stack direction="row" alignItems="center" spacing={1}>
+              <Stack key={item.name} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
                   <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
                     {item.name}
                   </Typography>
                 </Stack>
-                <Stack direction="row" alignItems="center" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {item.value}
                   </Typography>

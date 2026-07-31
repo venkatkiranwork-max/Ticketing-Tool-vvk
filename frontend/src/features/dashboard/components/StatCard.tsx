@@ -44,8 +44,8 @@ export function StatCard({
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
       <CardContent sx={{ p: '20px !important' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <Box
               sx={{
                 width: 40,
@@ -69,8 +69,8 @@ export function StatCard({
         <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', mb: 1.5, letterSpacing: '-0.02em' }}>
           {value}
         </Typography>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-          <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Stack direction="row" sx={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             {isPositiveTrend ? (
               <TrendingUpRoundedIcon sx={{ fontSize: '1rem', color: 'success.main' }} />
             ) : (

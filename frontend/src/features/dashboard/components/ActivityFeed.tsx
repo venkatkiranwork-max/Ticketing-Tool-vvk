@@ -41,7 +41,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
     <Card sx={{ borderRadius: '12px', boxShadow: '0px 2px 8px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', height: '100%' }}>
       <CardContent sx={{ p: '24px !important' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
             Team Activity
           </Typography>
@@ -56,7 +56,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
             const config = actionConfig[actionType];
             
             return (
-              <Stack key={activity._id} direction="row" spacing={2} alignItems="center">
+              <Stack key={activity._id} direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Avatar {...stringAvatar(activity.userName)} sx={{ width: 36, height: 36, fontSize: '0.9rem', bgcolor: '#e2e8f0', color: '#475569' }} />
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', display: 'inline' }}>

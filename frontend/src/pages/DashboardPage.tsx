@@ -18,8 +18,6 @@ import FolderOpenRoundedIcon from '@mui/icons-material/FolderOpenRounded';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
 import { useAuthStore } from '@/store/authStore';
-import { useUiStore } from '@/store/uiStore';
-import { IssueDetailsDrawer } from '@/components/ui/IssueDetailsDrawer';
 
 import { useDashboardSummary } from '@/features/dashboard/useDashboard';
 import { StatCard } from '@/features/dashboard/components/StatCard';
@@ -34,8 +32,7 @@ import { ProjectOverviewCard } from '@/features/dashboard/components/ProjectOver
 export function DashboardPage() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
-  const openDrawer = useUiStore((s) => s.openDrawer);
-
+  
   const { data: dashboardData, isLoading, error } = useDashboardSummary();
 
   if (isLoading) {
@@ -178,8 +175,7 @@ export function DashboardPage() {
         </Box>
       </Stack>
 
-      <IssueDetailsDrawer />
-    </Container>
+          </Container>
   );
 }
 

@@ -9,9 +9,14 @@ export const userService = {
     if (USE_MOCK_DATA) {
       return [...mockUsers];
     }
-    const res = (await apiClient.get('/users')) as any;
-    const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-    return items;
+    try {
+      const res = (await apiClient.get('/users')) as any;
+      const items = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      // Fall back to mock data if API returns empty (backend not running)
+      return items.length > 0 ? items : [...mockUsers];
+    } catch {
+      return [...mockUsers];
+    }
   },
 
   async getUserById(id: string): Promise<User> {

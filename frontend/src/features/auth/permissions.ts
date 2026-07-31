@@ -171,36 +171,39 @@ export function hasPermission(user: UserLike | null | undefined, permission: Per
   return userPermissions.includes(permission);
 }
 
+// Per-role default allowed screens (used when user.screens is not customized)
+const ROLE_DEFAULT_SCREENS: Record<string, ScreenKey[]> = {
+  'Super Admin': ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
+  super_admin:   ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
+  Admin:         ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
+  admin:         ['dashboard', 'projects', 'issues', 'board', 'teams', 'users', 'reports', 'auditLogs', 'administration', 'notifications', 'profile', 'settings'],
+  'Project Manager': ['dashboard', 'projects', 'issues', 'board', 'teams', 'reports', 'notifications', 'profile', 'settings'],
+  'Team Lead':   ['dashboard', 'projects', 'issues', 'board', 'teams', 'notifications', 'profile', 'settings'],
+  Member:        ['dashboard', 'projects', 'issues', 'board', 'notifications', 'profile', 'settings'],
+  member:        ['dashboard', 'projects', 'issues', 'board', 'notifications', 'profile', 'settings'],
+  Viewer:        ['dashboard', 'projects', 'reports', 'notifications', 'profile'],
+  viewer:        ['dashboard', 'projects', 'reports', 'notifications', 'profile'],
+  Guest:         ['dashboard', 'notifications', 'profile'],
+};
+
 export function hasScreenAccess(user: UserLike | null | undefined, screenKey: ScreenKey): boolean {
   if (!user) return false;
-  
-  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role;
-  
-  if (normalizedRole === 'Super Admin' && user.screens?.[screenKey] !== false) {
-    return true;
-  }
 
-  if (screenKey === 'administration') {
-    return normalizedRole === 'Super Admin';
-  }
+  const normalizedRole =
+    user.role === 'super_admin' ? 'Super Admin'
+    : user.role === 'admin' ? 'Admin'
+    : user.role === 'member' ? 'Member'
+    : user.role === 'viewer' ? 'Viewer'
+    : user.role;
 
+  // Per-user custom screen overrides (set in Administration > Screen Access)
   if (user.screens && user.screens[screenKey] !== undefined) {
     return !!user.screens[screenKey];
   }
 
-  switch (normalizedRole) {
-    case 'Admin':
-      return (screenKey as string) !== 'administration';
-    case 'Project Manager':
-    case 'Team Lead':
-    case 'Member':
-      return !['administration', 'auditLogs'].includes(screenKey as string);
-    case 'Viewer':
-    case 'Guest':
-      return ['dashboard', 'projects', 'issues', 'board', 'notifications', 'profile'].includes(screenKey as string);
-    default:
-      return screenKey === 'dashboard';
-  }
+  // Fall back to role default
+  const allowed = ROLE_DEFAULT_SCREENS[normalizedRole] || ['dashboard'];
+  return allowed.includes(screenKey);
 }
 
 export function hasFeaturePermission(user: UserLike | null | undefined, featureKey: FeaturePermissionKey): boolean {
@@ -289,40 +292,32 @@ export interface NavItemDef {
 export function getNavigationForUser(user: UserLike | null | undefined): NavItemDef[] {
   if (!user) return [];
 
-  const normalizedRole = user.role === 'super_admin' ? 'Super Admin' : user.role;
+  const normalizedRole =
+    user.role === 'super_admin' ? 'Super Admin'
+    : user.role === 'admin' ? 'Admin'
+    : user.role === 'member' ? 'Member'
+    : user.role === 'viewer' ? 'Viewer'
+    : user.role;
 
-  const candidateNavItems: NavItemDef[] = [
-    { label: 'Dashboard', route: '/dashboard', screenKey: 'dashboard', iconName: 'Dashboard' },
-    { label: 'Projects', route: '/projects', screenKey: 'projects', iconName: 'Projects' },
-    { label: 'Issues', route: '/issues', screenKey: 'issues', iconName: 'Issues' },
-    { label: 'Board', route: '/kanban', screenKey: 'board', iconName: 'Board' },
-    { label: 'Teams', route: '/teams', screenKey: 'teams', iconName: 'Teams' },
-    { label: 'Users', route: '/users', screenKey: 'users', iconName: 'Users' },
-    { label: 'Reports', route: '/reports', screenKey: 'reports', iconName: 'Reports' },
-    { label: 'Notifications', route: '/notifications', screenKey: 'notifications', iconName: 'Notifications' },
-  ];
-
-  const visibleItems = candidateNavItems.filter((item) => hasScreenAccess(user, item.screenKey));
-
-  if (normalizedRole === 'Super Admin' && hasScreenAccess(user, 'administration')) {
-    visibleItems.push({
-      label: 'Administration 🔒',
+  const allNavItems: (NavItemDef & { screenKey: ScreenKey })[] = [
+    { label: 'Dashboard',       route: '/dashboard',      screenKey: 'dashboard',       iconName: 'Dashboard' },
+    { label: 'Projects',        route: '/projects',       screenKey: 'projects',        iconName: 'Projects' },
+    { label: 'Issues',          route: '/issues',         screenKey: 'issues',          iconName: 'Issues' },
+    { label: 'Board',           route: '/kanban',         screenKey: 'board',           iconName: 'Board' },
+    { label: 'Teams',           route: '/teams',          screenKey: 'teams',           iconName: 'Teams' },
+    { label: 'Users',           route: '/users',          screenKey: 'users',           iconName: 'Users' },
+    { label: 'Reports',         route: '/reports',        screenKey: 'reports',         iconName: 'Reports' },
+    { label: 'Notifications',   route: '/notifications',  screenKey: 'notifications',   iconName: 'Notifications' },
+    {
+      label: normalizedRole === 'Super Admin' ? 'Administration 🔒' : 'Administration',
       route: '/administration',
       screenKey: 'administration',
       iconName: 'Administration',
-    });
-  }
+    },
+    { label: 'Settings',        route: '/settings',       screenKey: 'settings',        iconName: 'Settings' },
+  ];
 
-  if (hasScreenAccess(user, 'settings')) {
-    visibleItems.push({
-      label: 'Settings',
-      route: '/settings',
-      screenKey: 'settings',
-      iconName: 'Settings',
-    });
-  }
-
-  return visibleItems;
+  return allNavItems.filter((item) => hasScreenAccess(user, item.screenKey));
 }
 
 export function getNavigationForRole(role: string): NavItemDef[] {

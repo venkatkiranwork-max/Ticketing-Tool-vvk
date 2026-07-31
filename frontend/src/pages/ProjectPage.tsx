@@ -26,6 +26,11 @@ import {
   Chip,
   Card,
   LinearProgress,
+  Checkbox,
+  OutlinedInput,
+  ListItemText,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
@@ -60,7 +65,7 @@ export function ProjectPage() {
   const openDrawer = useUiStore((s) => s.openDrawer);
 
   const { data: issues = [] } = useIssuesQuery();
-  const { data: serverProjects, createProject: createProjectApi, updateProject: updateProjectApi } = useProjectsQuery();
+  const { data: serverProjects, createProject: createProjectApi, updateProject: updateProjectApi, archiveProject: archiveProjectApi } = useProjectsQuery();
   const { data: allUsers = [] } = useUsersQuery();
   const [localProjectsState, setLocalProjectsState] = useState<MockProject[]>(mockProjects);
 
@@ -99,8 +104,7 @@ export function ProjectPage() {
 
   // Add member modal state
   const [openAddMemberModal, setOpenAddMemberModal] = useState(false);
-  const [memberUserId, setMemberUserId] = useState(() => allUsers[0]?.id ?? mockUsers[0]?.id ?? '');
-  const [memberRole, setMemberRole] = useState<ProjectMember['projectRole']>('Developer');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   // Project specific issues calculation
   const projectIssues = useMemo(() => {
@@ -204,14 +208,28 @@ export function ProjectPage() {
   };
 
   const handleAddMember = () => {
-    if (!selectedProject) return;
-    const userObj = mockUsers.find((u) => u.id === memberUserId) || mockUsers[0];
+    if (!selectedProject || selectedUserIds.length === 0) {
+      toast.error('Please select at least one user');
+      return;
+    }
+
+    const selectedUserObjects = selectedUserIds.map(
+      (id) => allUsers.find((u) => u.id === id) || mockUsers.find((u) => u.id === id) || mockUsers[0]
+    );
+
+    const newMembers: ProjectMember[] = selectedUserObjects.map((u) => ({
+      user: u,
+      projectRole: (u.role as ProjectMember['projectRole']) || 'Member',
+    }));
 
     const updatedProjects = projects.map((p) => {
       if (p.id === selectedProject.id || p._id === selectedProject._id) {
+        // Filter out existing users to avoid duplicate additions
+        const existingUserIds = new Set((p.members || []).map((m: any) => m.user?.id || m.userId));
+        const filteredNewMembers = newMembers.filter((nm) => !existingUserIds.has(nm.user.id));
         return {
           ...p,
-          members: [...(p.members || []), { user: userObj, projectRole: memberRole }],
+          members: [...(p.members || []), ...filteredNewMembers],
         };
       }
       return p;
@@ -220,7 +238,8 @@ export function ProjectPage() {
     setProjects(updatedProjects);
     setSelectedProject(updatedProjects.find((p) => p.id === selectedProject.id || p._id === selectedProject._id) || null);
     setOpenAddMemberModal(false);
-    toast.success(`${userObj.firstName} added to project!`);
+    setSelectedUserIds([]);
+    toast.success(`${selectedUserObjects.length} member(s) added to project!`);
   };
 
   const handleCloseSprint = () => {
@@ -506,10 +525,22 @@ export function ProjectPage() {
                   variant="outlined"
                   color="error"
                   startIcon={<ArchiveOutlinedIcon />}
-                  onClick={() => {
-                    setProjects((prev) => prev.map((p) => (p.id === selectedProject.id || p._id === selectedProject._id ? { ...p, status: 'completed' } : p)));
-                    toast.success('Project archived');
-                    setSelectedProject(null);
+                  onClick={async () => {
+                    const targetId = selectedProject.id || selectedProject._id;
+                    try {
+                      await archiveProjectApi(targetId);
+                      // Also update local state
+                      setProjects((prev) => prev.map((p) => (p.id === targetId || p._id === targetId ? { ...p, status: 'completed' } : p)));
+                      toast.success(`Project "${selectedProject.name}" has been archived`);
+                      setSelectedProject(null);
+                      setCatalogTab('archived');
+                    } catch {
+                      // Fallback: update local state directly if API fails
+                      setProjects((prev) => prev.map((p) => (p.id === targetId || p._id === targetId ? { ...p, status: 'completed' } : p)));
+                      toast.success(`Project "${selectedProject.name}" has been archived`);
+                      setSelectedProject(null);
+                      setCatalogTab('archived');
+                    }
                   }}
                   sx={{ borderRadius: '8px', fontWeight: 600 }}
                 >
@@ -596,33 +627,113 @@ export function ProjectPage() {
       </Dialog>
 
       {/* Add Member Modal */}
-      <Dialog open={openAddMemberModal} onClose={() => setOpenAddMemberModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700 }}>Add Member to Project</DialogTitle>
-        <DialogContent sx={{ display: 'grid', gap: 2, pt: 1 }}>
-          <Select label="Select User" value={memberUserId} onChange={(e) => setMemberUserId(e.target.value)} fullWidth displayEmpty>
-            {allUsers.length === 0 && (
-              <MenuItem disabled value="">No users available</MenuItem>
-            )}
-            {allUsers.map((u) => (
-              <MenuItem key={u.id} value={u.id}>
-                {u.firstName} {u.lastName} ({u.team})
-              </MenuItem>
-            ))}
-          </Select>
-          <Select label="Project Role" value={memberRole} onChange={(e) => setMemberRole(e.target.value as ProjectMember['projectRole'])} fullWidth>
-            <MenuItem value="Project Admin">Project Admin</MenuItem>
-            <MenuItem value="Lead Developer">Lead Developer</MenuItem>
-            <MenuItem value="Developer">Developer</MenuItem>
-            <MenuItem value="QA Tester">QA Tester</MenuItem>
-            <MenuItem value="Viewer">Viewer</MenuItem>
-          </Select>
+      <Dialog
+        open={openAddMemberModal}
+        onClose={() => {
+          setOpenAddMemberModal(false);
+          setSelectedUserIds([]);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Add Members to Project</DialogTitle>
+        <DialogContent sx={{ display: 'grid', gap: 2, pt: 2 }}>
+          <FormControl fullWidth>
+            <InputLabel id="add-members-label">Select Users</InputLabel>
+            <Select
+              labelId="add-members-label"
+              multiple
+              value={selectedUserIds}
+              onChange={(e) => {
+                const val = e.target.value as string[];
+                setSelectedUserIds(val.filter((v) => typeof v === 'string' && v.length > 0));
+              }}
+              input={<OutlinedInput label="Select Users" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(selected as string[]).map((value) => {
+                    const u =
+                      allUsers.find((user) => user.id === value) ||
+                      mockUsers.find((user) => user.id === value);
+                    return (
+                      <Chip
+                        key={value}
+                        label={u ? `${u.firstName} ${u.lastName}` : value}
+                        size="small"
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+
+            >
+              {allUsers.length === 0 ? (
+                <MenuItem disabled value="">No users available</MenuItem>
+              ) : (
+                allUsers
+                  .filter((u) => u.id && u.id.length > 0)
+                  .map((u) => {
+                    const isSelected = selectedUserIds.includes(u.id);
+                    return (
+                      <MenuItem
+                        key={u.id}
+                        value={u.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUserIds((prev) =>
+                            isSelected
+                              ? prev.filter((id) => id !== u.id)
+                              : [...prev, u.id]
+                          );
+                        }}
+                      >
+                        <Checkbox checked={isSelected} />
+                        <Avatar
+                          src={u.avatarUrl}
+                          sx={{ width: 28, height: 28, mr: 1.5, fontSize: '0.7rem' }}
+                        >
+                          {u.firstName?.[0]}
+                        </Avatar>
+                        <ListItemText
+                          primary={`${u.firstName} ${u.lastName}`}
+                          secondary={`${u.team} • ${u.role}`}
+                        />
+                      </MenuItem>
+                    );
+                  })
+              )}
+            </Select>
+          </FormControl>
+
+          {selectedUserIds.length > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                {selectedUserIds.length} user{selectedUserIds.length > 1 ? 's' : ''} selected
+              </Typography>
+              <Button
+                size="small"
+                variant="text"
+                color="error"
+                onClick={() => setSelectedUserIds([])}
+                sx={{ fontSize: '0.72rem', p: 0, minWidth: 'auto' }}
+              >
+                Clear all
+              </Button>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
-          <Button onClick={() => setOpenAddMemberModal(false)} color="inherit">
+          <Button
+            onClick={() => {
+              setOpenAddMemberModal(false);
+              setSelectedUserIds([]);
+            }}
+            color="inherit"
+          >
             Cancel
           </Button>
           <Button variant="contained" onClick={handleAddMember} sx={{ fontWeight: 600 }}>
-            Add Member
+            Add{selectedUserIds.length > 1 ? ` ${selectedUserIds.length} Members` : ' Member'}
           </Button>
         </DialogActions>
       </Dialog>

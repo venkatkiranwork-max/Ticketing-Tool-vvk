@@ -55,9 +55,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import {
-  mockUsers as initialMockUsers,
+  mockUsers,
   type MockUser,
   type UserStatus,
   type ScreenKey,
@@ -72,6 +73,7 @@ import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { ScreenAccessModal } from '@/components/admin/ScreenAccessModal';
 import { FeaturePermissionsModal } from '@/components/admin/FeaturePermissionsModal';
 import { WelcomeEmailModal } from '@/components/admin/WelcomeEmailModal';
+import { queryKeys } from '@/lib/queryKeys';
 
 // ─── Tab Panel Wrapper ───────────────────────────────────────────────────────
 function TabPanel({ children, value, index }: { children?: React.ReactNode; index: number; value: number }) {
@@ -106,10 +108,12 @@ const TEAMS = ['IT', 'UI/UX', 'Testing', 'Engineering', 'Product Management', 'D
 // ─── Main Component ─────────────────────────────────────────────────────────
 export const AdministrationPage: React.FC = () => {
   const currentUser = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
 
   // ── All state at top level (hooks must not be conditional) ──
   const [activeTab, setActiveTab] = useState(0);
-  const [usersList, setUsersList] = useState<MockUser[]>(initialMockUsers);
+  // Initialize from live mockUsers so newly created users from UsersPage are visible
+  const [usersList, setUsersList] = useState<MockUser[]>(() => [...mockUsers]);
 
   // User Management filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -262,6 +266,11 @@ export const AdministrationPage: React.FC = () => {
       permissions: { ...DEFAULT_FEATURE_PERMISSIONS },
     };
     setUsersList((prev) => [newUser, ...prev]);
+    // Also push to shared mockUsers array so login works with Temp@1234
+    mockUsers.unshift(newUser);
+    // Invalidate React Query cache so Add Members dialog shows the new user
+    queryClient.setQueryData(queryKeys.users, (old: MockUser[] = []) => [newUser, ...old]);
+    queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success(`✅ User ${newUser.firstName} ${newUser.lastName} created!`);
     addAuditLog(`Created user ${newUser.firstName} ${newUser.lastName} (${newUser.email})`, 'User Management');
     setWelcomeUser({ firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, tempPassword: 'Temp@1234' });
@@ -270,6 +279,10 @@ export const AdministrationPage: React.FC = () => {
 
   const handleUpdateStatus = (user: MockUser, newStatus: UserStatus) => {
     setUsersList((prev) => prev.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
+    // Sync status to shared mockUsers and invalidate query cache
+    const sharedIdx = mockUsers.findIndex((u) => u.id === user.id);
+    if (sharedIdx !== -1) mockUsers[sharedIdx].status = newStatus;
+    queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success(`${user.firstName}'s status set to ${newStatus}`);
     addAuditLog(`Changed status for ${user.firstName} ${user.lastName} to ${newStatus}`, 'User Status', newStatus === 'Locked' ? 'WARNING' : 'SUCCESS');
   };
@@ -310,13 +323,15 @@ export const AdministrationPage: React.FC = () => {
 
   const handleSaveEditUser = () => {
     if (!editUser) return;
+    const updated = { firstName: editFirstName, lastName: editLastName, email: editEmail, role: editRole as WorkspaceRole, team: editTeam, status: editStatus, phone: editPhone, location: editLocation };
     setUsersList((prev) =>
-      prev.map((u) =>
-        u.id === editUser.id
-          ? { ...u, firstName: editFirstName, lastName: editLastName, email: editEmail, role: editRole, team: editTeam, status: editStatus, phone: editPhone, location: editLocation }
-          : u
-      )
+      prev.map((u) => u.id === editUser.id ? { ...u, ...updated } : u)
     );
+    // Sync to shared mockUsers array for login consistency
+    const sharedIdx = mockUsers.findIndex((u) => u.id === editUser.id);
+    if (sharedIdx !== -1) Object.assign(mockUsers[sharedIdx], updated);
+    // Invalidate query cache so the updated user appears in Add Members dialog
+    queryClient.invalidateQueries({ queryKey: queryKeys.users });
     toast.success(`${editFirstName} ${editLastName}'s profile updated`);
     addAuditLog(`Edited profile for ${editFirstName} ${editLastName}`, 'User Management');
     setEditDialogOpen(false);

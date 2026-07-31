@@ -118,7 +118,8 @@ export function LoginPage() {
           <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', mb: 1 }}>
             <KeyOutlinedIcon sx={{ fontSize: 16, color: 'primary.main' }} />
             <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.675rem' }}>
-              Select Demo Account (Pass: <code style={{ background: 'rgba(124, 58, 237, 0.15)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace', color: '#a78bfa' }}>Password123!</code>)
+              Demo Accounts — Pass: <code style={{ background: 'rgba(124, 58, 237, 0.15)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace', color: '#a78bfa' }}>Password123!</code>{' '}
+              | New users: <code style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace', color: '#10b981' }}>Temp@1234</code>
             </Typography>
           </Stack>
 

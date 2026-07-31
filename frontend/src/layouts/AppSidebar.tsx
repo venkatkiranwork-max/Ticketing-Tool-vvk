@@ -125,11 +125,12 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
     Settings: <SettingsOutlinedIcon fontSize="small" />,
   };
 
-  const demoPersonas = [
-    { label: 'Suresh Kumar (Super Admin)', user: mockUsers[0] },
-    { label: 'Ravi Sharma (Admin)', user: mockUsers[1] },
-    { label: 'Mani Verma (Project Manager)', user: mockUsers[2] },
-  ];
+  const demoPersonas = mockUsers
+    .filter((u) => u.status === 'Active')
+    .map((u) => ({
+      label: `${u.firstName} ${u.lastName} (${u.role})`,
+      user: u,
+    }));
 
   return (
     <Box

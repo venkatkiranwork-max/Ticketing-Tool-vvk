@@ -16,6 +16,7 @@ export type DashboardSummary = {
     completedIssues: number;
     overdueIssues: number;
     inProgressIssues: number;
+    pendingIssues: number;
     completionRate: number;
   };
   sprintProgress: {
@@ -32,9 +33,11 @@ export type DashboardSummary = {
     title: string;
     status: string;
     priority: string;
+    projectName?: string;
     assigneeName?: string;
     assigneeAvatar?: string;
     dueDate?: string;
+    updatedAt?: string;
   }>;
   upcomingDeadlines: Array<{
     _id: string;
@@ -68,18 +71,21 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
     // Filter projects and issues dynamically by role & assignments
     const filteredProjects = filterProjectsForUser(mockProjects, currentUser);
     const filteredIssues = filterIssuesForUser(mockIssues, currentUser);
+    const userIssues = filteredIssues.filter(
+      (i) => i.assignee?.id === currentUser.id || i.assignee?.email === currentUser.email
+    );
 
     const totalUsers = mockUsers.length;
     const totalProjects = filteredProjects.length;
-    const totalIssues = filteredIssues.length;
-    const completedIssues = filteredIssues.filter((i) => i.status === 'done').length;
-    const inProgressIssues = filteredIssues.filter((i) => i.status === 'in_progress' || i.status === 'review').length;
-    const todoIssues = filteredIssues.filter((i) => i.status === 'todo').length;
-    const backlogIssues = filteredIssues.filter((i) => i.status === 'backlog').length;
+    const totalIssues = userIssues.length;
+    const completedIssues = userIssues.filter((i) => i.status === 'done').length;
+    const inProgressIssues = userIssues.filter((i) => i.status === 'in_progress' || i.status === 'review').length;
+    const todoIssues = userIssues.filter((i) => i.status === 'todo').length;
+    const backlogIssues = userIssues.filter((i) => i.status === 'backlog').length;
 
     // overdue issues: active issues with dueDate before today
     const todayStr = new Date().toISOString().split('T')[0];
-    const overdueIssues = filteredIssues.filter(
+    const overdueIssues = userIssues.filter(
       (i) => i.status !== 'done' && i.dueDate && i.dueDate < todayStr
     ).length;
 
@@ -93,18 +99,18 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
     };
 
     const issueDistribution: Record<string, number> = {};
-    filteredIssues.forEach((i) => {
+    userIssues.forEach((i) => {
       const statusLabel = i.status.replace('_', ' ').toUpperCase();
       issueDistribution[statusLabel] = (issueDistribution[statusLabel] || 0) + 1;
     });
 
     const priorityBreakdown: Record<string, number> = {};
-    filteredIssues.forEach((i) => {
+    userIssues.forEach((i) => {
       const priorityLabel = i.priority.toUpperCase();
       priorityBreakdown[priorityLabel] = (priorityBreakdown[priorityLabel] || 0) + 1;
     });
 
-    const recentIssues = filteredIssues.slice(0, 5).map((i) => ({
+    const recentIssues = userIssues.slice(0, 6).map((i) => ({
       _id: i._id || i.id,
       key: i.key,
       title: i.title,
@@ -168,6 +174,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
         completedIssues,
         overdueIssues,
         inProgressIssues,
+        pendingIssues: todoIssues + backlogIssues,
         completionRate,
       },
       sprintProgress,
@@ -193,6 +200,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
         completedIssues: mockIssues.filter((i) => i.status === 'done').length,
         overdueIssues: mockIssues.filter((i) => i.status !== 'done' && i.dueDate && i.dueDate < new Date().toISOString().split('T')[0]).length,
         inProgressIssues: mockIssues.filter((i) => i.status === 'in_progress' || i.status === 'review').length,
+        pendingIssues: mockIssues.filter((i) => i.status === 'todo' || i.status === 'backlog').length,
         completionRate: mockIssues.length ? Math.round((mockIssues.filter((i) => i.status === 'done').length / mockIssues.length) * 100) : 0,
       },
       sprintProgress: {

@@ -6,7 +6,10 @@ import { AuditLog } from '../models/AuditLog.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 
-export const getDashboardSummary = asyncHandler(async (_req: Request, res: Response) => {
+export const getDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.userId;
+  const issueFilter = { isDeleted: false, assigneeId: userId };
+
   const [
     totalUsers,
     totalProjects,
@@ -14,6 +17,7 @@ export const getDashboardSummary = asyncHandler(async (_req: Request, res: Respo
     completedIssues,
     overdueIssues,
     inProgressIssues,
+    pendingIssues,
     issueDistribution,
     priorityBreakdown,
     recentIssues,
@@ -23,27 +27,28 @@ export const getDashboardSummary = asyncHandler(async (_req: Request, res: Respo
   ] = await Promise.all([
     User.countDocuments({ isDeleted: false }),
     Project.countDocuments({ isDeleted: false }),
-    Issue.countDocuments({ isDeleted: false }),
-    Issue.countDocuments({ isDeleted: false, status: 'done' }),
+    Issue.countDocuments(issueFilter),
+    Issue.countDocuments({ ...issueFilter, status: 'done' }),
     Issue.countDocuments({
-      isDeleted: false,
+      ...issueFilter,
       status: { $ne: 'done' },
       dueDate: { $lt: new Date() },
     }),
-    Issue.countDocuments({ isDeleted: false, status: 'in_progress' }),
+    Issue.countDocuments({ ...issueFilter, status: 'in_progress' }),
+    Issue.countDocuments({ ...issueFilter, status: { $in: ['todo', 'backlog'] } }),
     Issue.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: issueFilter },
       { $group: { _id: '$status', count: { $sum: 1 } } }
     ]),
     Issue.aggregate([
-      { $match: { isDeleted: false } },
+      { $match: issueFilter },
       { $group: { _id: '$priority', count: { $sum: 1 } } }
     ]),
-    Issue.find({ isDeleted: false })
-      .sort({ createdAt: -1 })
+    Issue.find(issueFilter)
+      .sort({ updatedAt: -1 })
       .limit(6)
-      .select('key title status priority assigneeName assigneeAvatar dueDate'),
-    Issue.find({ isDeleted: false, status: { $ne: 'done' }, dueDate: { $gte: new Date() } })
+      .select('key title status priority assigneeName assigneeAvatar projectName updatedAt'),
+    Issue.find({ ...issueFilter, status: { $ne: 'done' }, dueDate: { $gte: new Date() } })
       .sort({ dueDate: 1 })
       .limit(5)
       .select('key title dueDate'),
@@ -83,13 +88,14 @@ export const getDashboardSummary = asyncHandler(async (_req: Request, res: Respo
         completedIssues,
         overdueIssues,
         inProgressIssues,
+        pendingIssues,
         completionRate,
       },
       sprintProgress: {
         total: totalIssues,
         completed: completedIssues,
         inProgress: inProgressIssues,
-        todo: totalIssues - completedIssues - inProgressIssues, // Simplification
+        todo: pendingIssues,
       },
       issueDistribution: issueDistribution.reduce((acc, curr) => {
         acc[curr._id] = curr.count;

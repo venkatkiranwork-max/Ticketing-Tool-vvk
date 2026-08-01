@@ -6,13 +6,17 @@ import {
   Box,
   Button,
   CircularProgress,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import ConfirmationNumberRoundedIcon from '@mui/icons-material/ConfirmationNumberRounded';
-import SyncAltRoundedIcon from '@mui/icons-material/SyncAltRounded';
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
+import HourglassEmptyRoundedIcon from '@mui/icons-material/HourglassEmptyRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
+import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/constants';
@@ -21,12 +25,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useDashboardSummary } from '@/features/dashboard/useDashboard';
 import { StatCard } from '@/features/dashboard/components/StatCard';
 import { ActivityFeed } from '@/features/dashboard/components/ActivityFeed';
-import { RecentIssuesList } from '@/features/dashboard/components/RecentIssuesList';
-import { PriorityBreakdown } from '@/features/dashboard/components/PriorityBreakdown';
-import { UpcomingDeadlines } from '@/features/dashboard/components/UpcomingDeadlines';
-import { ProjectOverviewCard } from '@/features/dashboard/components/ProjectOverviewCard';
+import { RecentTicketsTable } from '@/features/dashboard/components/RecentTicketsTable';
 import { SprintProgressChart } from '@/features/dashboard/components/SprintProgressChart';
 import { IssueDistributionChart } from '@/features/dashboard/components/IssueDistributionChart';
+import { IssueDetailsDrawer } from '@/components/ui/IssueDetailsDrawer';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -96,43 +98,101 @@ export function DashboardPage() {
     stats,
     sprintProgress,
     issueDistribution,
-    priorityBreakdown,
     recentIssues,
-    upcomingDeadlines,
     recentActivity,
-    projectStats,
   } = dashboardData;
 
-  // Only the four core KPIs live here. "Active Projects" moved down into the
-  // Projects Overview header so the same number isn't shown twice.
   const statCardsData = [
-    { label: 'Total Tickets', value: stats.totalIssues, icon: <ConfirmationNumberRoundedIcon />, iconColor: '#8b5cf6', iconBgColor: '#f3e8ff' },
-    { label: 'In Progress', value: stats.inProgressIssues, icon: <SyncAltRoundedIcon />, iconColor: '#f59e0b', iconBgColor: '#fef3c7' },
-    { label: 'Completed', value: stats.completedIssues, icon: <CheckCircleRoundedIcon />, iconColor: '#10b981', iconBgColor: '#dcfce7' },
-    { label: 'Overdue', value: stats.overdueIssues, icon: <ErrorOutlineRoundedIcon />, iconColor: '#ef4444', iconBgColor: '#fee2e2' },
+    {
+      label: 'Total Tickets',
+      value: stats.totalIssues,
+      icon: <AssignmentRoundedIcon />,
+      iconColor: '#2563eb',
+      iconBgColor: '#eff6ff',
+      trendValue: 12,
+      trendText: 'vs last 7 days',
+    },
+    {
+      label: 'In Progress',
+      value: stats.inProgressIssues,
+      icon: <AccessTimeRoundedIcon />,
+      iconColor: '#ea580c',
+      iconBgColor: '#fff7ed',
+      trendValue: 8,
+      trendText: 'vs last 7 days',
+    },
+    {
+      label: 'Completed',
+      value: stats.completedIssues,
+      icon: <CheckCircleRoundedIcon />,
+      iconColor: '#16a34a',
+      iconBgColor: '#f0fdf4',
+      trendValue: 16,
+      trendText: 'vs last 7 days',
+    },
+    {
+      label: 'Pending',
+      value: stats.pendingIssues ?? 0,
+      icon: <HourglassEmptyRoundedIcon />,
+      iconColor: '#7c3aed',
+      iconBgColor: '#faf5ff',
+      trendValue: -4,
+      trendText: 'vs last 7 days',
+    },
   ];
 
   return (
     <Container maxWidth="xl" disableGutters sx={{ py: 3, px: { xs: 2, md: 4 }, width: '100%' }}>
       <Stack spacing={3}>
         {/* Header */}
-        <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-end' }, gap: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-end' }, gap: 2 }}
+        >
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
-              Welcome back, {currentUser?.firstName || 'User'}! <span>👋</span>
+              Welcome back, {currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName || ''}`.trim() : 'User'}! <span>👋</span>
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-              Here's what's happening with your workspace today.
+              Here's what's happening with your work today.
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon fontSize="small" />}
-            onClick={() => navigate(ROUTES.ISSUES)}
-            sx={{ borderRadius: '8px', fontWeight: 600, bgcolor: '#6366f1', '&:hover': { bgcolor: '#4f46e5' }, boxShadow: 'none' }}
-          >
-            New Issue
-          </Button>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Select
+              value="Jul 22 - Jul 28, 2025"
+              size="small"
+              renderValue={(value) => (
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <CalendarTodayOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{value}</span>
+                </Stack>
+              )}
+              sx={{
+                height: 38,
+                borderRadius: '8px',
+                bgcolor: 'background.paper',
+                px: 0.5,
+              }}
+            >
+              <MenuItem value="Jul 22 - Jul 28, 2025">Jul 22 - Jul 28, 2025</MenuItem>
+            </Select>
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon fontSize="small" />}
+              onClick={() => navigate(ROUTES.ISSUES)}
+              sx={{
+                height: 38,
+                borderRadius: '8px',
+                fontWeight: 600,
+                bgcolor: '#2563eb',
+                '&:hover': { bgcolor: '#1d4ed8' },
+                boxShadow: 'none',
+                textTransform: 'none',
+              }}
+            >
+              New Issue
+            </Button>
+          </Stack>
         </Stack>
 
         {/* Top Stat Cards */}
@@ -145,6 +205,8 @@ export function DashboardPage() {
                 icon={stat.icon}
                 iconColor={stat.iconColor}
                 iconBgColor={stat.iconBgColor}
+                trendValue={stat.trendValue}
+                trendText={stat.trendText}
               />
             </Grid>
           ))}
@@ -155,8 +217,8 @@ export function DashboardPage() {
           <Grid size={{ xs: 12, md: 4 }}>
             <SprintProgressChart
               sprintName="Sprint 24"
-              startDate="Jul 22"
-              endDate="Aug 5"
+              startDate="Jul 20"
+              endDate="Aug 02"
               completed={sprintProgress.completed}
               inProgress={sprintProgress.inProgress}
               todo={sprintProgress.todo}
@@ -171,75 +233,12 @@ export function DashboardPage() {
           </Grid>
         </Grid>
 
-        {/* Bottom Row */}
-        <Grid container spacing={2.5}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <RecentIssuesList issues={recentIssues} />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <PriorityBreakdown priorities={priorityBreakdown} />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <UpcomingDeadlines deadlines={upcomingDeadlines} />
-          </Grid>
-        </Grid>
-
-        {/* Projects Overview */}
+        {/* Bottom Row - Recent Tickets Table */}
         <Box sx={{ pt: 1 }}>
-          <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                Projects Overview
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {stats.totalProjects} active project{stats.totalProjects === 1 ? '' : 's'}
-              </Typography>
-            </Box>
-            {projectStats.length > 0 && (
-              <Button
-                size="small"
-                onClick={() => navigate(ROUTES.PROJECTS)}
-                sx={{ fontWeight: 600, color: '#6366f1' }}
-              >
-                View all projects
-              </Button>
-            )}
-          </Stack>
-
-          {projectStats.length === 0 ? (
-            <Box
-              sx={{
-                border: '1px dashed',
-                borderColor: 'divider',
-                borderRadius: '12px',
-                py: 5,
-                textAlign: 'center',
-              }}
-            >
-              <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-                No projects yet. Create one to start tracking issues.
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<AddRoundedIcon fontSize="small" />}
-                onClick={() => navigate(ROUTES.PROJECTS)}
-                sx={{ borderRadius: '8px', fontWeight: 600 }}
-              >
-                New Project
-              </Button>
-            </Box>
-          ) : (
-            <Grid container spacing={2.5}>
-              {projectStats.map((project) => (
-                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2.4 }} key={project._id}>
-                  <ProjectOverviewCard project={project} />
-                </Grid>
-              ))}
-            </Grid>
-          )}
+          <RecentTicketsTable issues={recentIssues} />
         </Box>
       </Stack>
+      <IssueDetailsDrawer />
     </Container>
   );
 }

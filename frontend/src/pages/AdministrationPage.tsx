@@ -74,6 +74,7 @@ import { CreateUserModal } from '@/components/admin/CreateUserModal';
 import { ScreenAccessModal } from '@/components/admin/ScreenAccessModal';
 import { FeaturePermissionsModal } from '@/components/admin/FeaturePermissionsModal';
 import { WelcomeEmailModal } from '@/components/admin/WelcomeEmailModal';
+import { mockAuditLogs, saveAuditLogsToStorage, type MockAuditLog } from '@/mock/auditLogs';
 import { queryKeys } from '@/lib/queryKeys';
 
 // ─── Tab Panel Wrapper ───────────────────────────────────────────────────────
@@ -161,14 +162,7 @@ export const AdministrationPage: React.FC = () => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // Audit Logs
-  const [auditLogs, setAuditLogs] = useState([
-    { id: '1', time: '10:30 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Granted Reports access to Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
-    { id: '2', time: '10:45 AM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Locked Mani Verma account', module: 'User Status', status: 'WARNING' },
-    { id: '3', time: '11:10 AM', actor: 'Ravi Sharma', role: 'Project Manager', action: 'Created Enterprise Platform Core project', module: 'Projects', status: 'SUCCESS' },
-    { id: '4', time: '01:15 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Reset password for Mani Verma', module: 'User Management', status: 'SUCCESS' },
-    { id: '5', time: '02:00 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Updated screen permissions for Ravi Sharma', module: 'Screen Access', status: 'SUCCESS' },
-    { id: '6', time: '03:30 PM', actor: 'Suresh Kumar', role: 'Super Admin', action: 'Activated account for Mani Verma', module: 'User Status', status: 'SUCCESS' },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<MockAuditLog[]>(() => [...mockAuditLogs]);
 
   // ── Permission check (AFTER all hooks) ──────────────────────────────────
   const isSuperAdmin = currentUser?.role === 'Super Admin' || currentUser?.role === 'super_admin';
@@ -195,7 +189,7 @@ export const AdministrationPage: React.FC = () => {
   const filteredAuditLogs = useMemo(() => {
     return auditLogs.filter((log) => {
       const matchSearch =
-        log.actor.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        (log.userName || (log as any).actor || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
         log.action.toLowerCase().includes(auditSearch.toLowerCase());
       const matchModule = auditModuleFilter === 'All' || log.module === auditModuleFilter;
       return matchSearch && matchModule;
@@ -223,18 +217,22 @@ export const AdministrationPage: React.FC = () => {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const addAuditLog = (action: string, module: string, status = 'SUCCESS') => {
-    setAuditLogs((prev) => [
-      {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actor: `${currentUser?.firstName} ${currentUser?.lastName}`,
-        role: currentUser?.role || 'Super Admin',
-        action,
-        module,
-        status,
-      },
-      ...prev,
-    ]);
+    const newLog: MockAuditLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      user: `${currentUser?.firstName} ${currentUser?.lastName}`,
+      userName: `${currentUser?.firstName} ${currentUser?.lastName}`,
+      role: currentUser?.role || 'Super Admin',
+      userRole: currentUser?.role || 'Super Admin',
+      action,
+      module,
+      ipAddress: '192.168.1.100',
+      status: status as any,
+      details: `${action} in module ${module}`,
+    };
+    mockAuditLogs.unshift(newLog);
+    saveAuditLogsToStorage(mockAuditLogs);
+    setAuditLogs([...mockAuditLogs]);
   };
 
   const handleMenuOpen = (e: React.MouseEvent<HTMLElement>, user: MockUser) => {
@@ -757,10 +755,12 @@ export const AdministrationPage: React.FC = () => {
                 <TableBody>
                   {filteredAuditLogs.map((log) => (
                     <TableRow key={log.id} hover sx={{ '&:last-child td': { border: 0 } }}>
-                      <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary', whiteSpace: 'nowrap' }}>{log.time}</TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                        {log.timestamp ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (log as any).time}
+                      </TableCell>
                       <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>{log.actor}</Typography>
-                        <Typography variant="caption" color="text.secondary">{log.role}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.82rem' }}>{log.userName || (log as any).actor}</Typography>
+                        <Typography variant="caption" color="text.secondary">{log.role || log.userRole}</Typography>
                       </TableCell>
                       <TableCell sx={{ fontSize: '0.82rem', maxWidth: 320 }}>{log.action}</TableCell>
                       <TableCell><Chip label={log.module} size="small" variant="outlined" sx={{ fontWeight: 600, fontSize: '0.68rem' }} /></TableCell>

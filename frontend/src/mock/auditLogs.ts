@@ -14,7 +14,7 @@ export interface MockAuditLog {
 
 export type AuditLogEntry = MockAuditLog;
 
-export const mockAuditLogs: MockAuditLog[] = [
+const INITIAL_MOCK_AUDIT_LOGS: MockAuditLog[] = [
   {
     id: 'log-101',
     timestamp: '2026-07-22 17:42:10',
@@ -55,3 +55,24 @@ export const mockAuditLogs: MockAuditLog[] = [
     details: 'Archived project HR Portal (prj-4)',
   },
 ];
+
+const STORAGE_KEY = 'mock_audit_logs_db';
+const loadAuditLogs = (): MockAuditLog[] => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : INITIAL_MOCK_AUDIT_LOGS;
+  } catch {
+    return INITIAL_MOCK_AUDIT_LOGS;
+  }
+};
+
+export const saveAuditLogsToStorage = (logs: MockAuditLog[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  } catch (e) {
+    console.error('Failed to save mock audit logs', e);
+  }
+};
+
+export const mockAuditLogs: MockAuditLog[] = loadAuditLogs();
+

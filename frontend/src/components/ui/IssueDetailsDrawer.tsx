@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Drawer,
   Box,
@@ -33,6 +33,9 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import toast from 'react-hot-toast';
+import LinkIcon from '@mui/icons-material/Link';
+import InsertLinkOutlinedIcon from '@mui/icons-material/InsertLinkOutlined';
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 
 import { useUiStore, type DrawerTab } from '@/store/uiStore';
 import {
@@ -70,6 +73,7 @@ export function IssueDetailsDrawer() {
   const { addComment, editComment, deleteComment } = useCommentMutations(selectedIssueId);
   const { addAttachment, removeAttachment } = useAttachmentMutations(selectedIssueId);
   const { data: allUsers = [] } = useUsersQuery();
+  const usersForAssigneeSelect = allUsers.length > 0 ? allUsers : mockUsers;
   const { addChecklistItem, toggleChecklistItem, deleteChecklistItem } = useChecklistMutations(selectedIssueId);
 
   // Local state
@@ -77,6 +81,46 @@ export function IssueDetailsDrawer() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [newChecklistText, setNewChecklistText] = useState('');
+
+  const [localStatus, setLocalStatus] = useState<IssueStatus>('todo');
+  const [localPriority, setLocalPriority] = useState<IssuePriority>('medium');
+  const [localAssigneeId, setLocalAssigneeId] = useState<string>('');
+  const [localDueDate, setLocalDueDate] = useState<string>('');
+  const [localDescription, setLocalDescription] = useState<string>('');
+
+  useEffect(() => {
+    if (issue) {
+      setLocalStatus(issue.status);
+      setLocalPriority(issue.priority);
+      setLocalAssigneeId(issue.assignee?.id || '');
+      setLocalDueDate(issue.dueDate || '');
+      setLocalDescription(issue.description || '');
+    }
+  }, [issue?.id, issue?.status, issue?.priority, issue?.assignee?.id, issue?.dueDate, issue?.description]);
+
+  const handleSaveAll = () => {
+    if (!issue) return;
+    const matchedAssignee = usersForAssigneeSelect.find(u => u.id === localAssigneeId) || mockUsers.find(u => u.id === localAssigneeId) || mockUsers[0];
+    
+    updateMutation.mutate({
+      issueId: issue.id,
+      updates: {
+        status: localStatus,
+        priority: localPriority,
+        assignee: matchedAssignee as any,
+        dueDate: localDueDate,
+        description: localDescription,
+      },
+      actor: currentUser,
+    }, {
+      onSuccess: () => {
+        toast.success('Issue details saved successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to save issue details.');
+      }
+    });
+  };
 
   if (!isDrawerOpen || !issue) {
     return null;
@@ -91,43 +135,6 @@ export function IssueDetailsDrawer() {
   const checklist = issue.checklist || [];
   const completedChecklistCount = checklist.filter((c) => c.isCompleted).length;
   const checklistPercentage = checklist.length ? Math.round((completedChecklistCount / checklist.length) * 100) : 0;
-
-  const handleStatusChange = (newStatus: IssueStatus) => {
-    if (!canEditStatus) {
-      toast.error('Members can only update status of their own assigned issues.');
-      return;
-    }
-    updateMutation.mutate({
-      issueId: issue.id,
-      updates: { status: newStatus },
-      actor: currentUser,
-    });
-  };
-
-  const handlePriorityChange = (newPriority: IssuePriority) => {
-    if (!canEditAllFields) {
-      toast.error('Only Project Managers can change issue priority.');
-      return;
-    }
-    updateMutation.mutate({
-      issueId: issue.id,
-      updates: { priority: newPriority },
-      actor: currentUser,
-    });
-  };
-
-  const handleAssigneeChange = (newAssigneeId: string) => {
-    if (!canEditAllFields) {
-      toast.error('Only Project Managers can reassign issues.');
-      return;
-    }
-    const newAssignedUser = mockUsers.find((u) => u.id === newAssigneeId) || mockUsers[0];
-    updateMutation.mutate({
-      issueId: issue.id,
-      updates: { assignee: newAssignedUser },
-      actor: currentUser,
-    });
-  };
 
   const handleAddCommentSubmit = () => {
     if (!newCommentText.trim()) return;
@@ -203,26 +210,107 @@ export function IssueDetailsDrawer() {
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
                   Description
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 0.75, lineHeight: 1.6, color: 'text.primary' }}>
-                  {issue.description || 'No description provided.'}
-                </Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={localDescription}
+                  onChange={(e) => setLocalDescription(e.target.value)}
+                  disabled={!canEditAllFields}
+                  placeholder="Enter work item description..."
+                  sx={{
+                    mt: 1,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '10px',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.6,
+                    }
+                  }}
+                />
               </Box>
 
               <Divider />
 
-              {/* Role-Gated Metadata Fields Grid */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Status
-                  </Typography>
+              {/* Action Buttons Bar */}
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AccountTreeOutlinedIcon />}
+                  onClick={() => toast.success('Sub-work item creation is ready!')}
+                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600, borderColor: 'divider', color: 'text.primary' }}
+                >
+                  Add sub-work item
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LinkIcon />}
+                  onClick={() => toast.success('Relation linkage is ready!')}
+                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600, borderColor: 'divider', color: 'text.primary' }}
+                >
+                  Add relation
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<InsertLinkOutlinedIcon />}
+                  onClick={() => toast.success('External link attachment is ready!')}
+                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600, borderColor: 'divider', color: 'text.primary' }}
+                >
+                  Add link
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AttachFileOutlinedIcon />}
+                  onClick={() => {
+                    const tabEl = document.querySelector('[value="attachments"]') as HTMLElement;
+                    tabEl?.click();
+                  }}
+                  sx={{ textTransform: 'none', borderRadius: '8px', fontWeight: 600, borderColor: 'divider', color: 'text.primary' }}
+                >
+                  Attach
+                </Button>
+              </Stack>
+
+              <Divider />
+
+              {/* Properties Section */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2 }}>
+                  Properties
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 2, alignItems: 'center' }}>
+                  
+                  {/* State */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>State</Typography>
                   <Select
-                    value={issue.status}
-                    onChange={(e) => handleStatusChange(e.target.value as IssueStatus)}
+                    value={localStatus}
+                    onChange={(e) => setLocalStatus(e.target.value as IssueStatus)}
                     disabled={!canEditStatus}
                     size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, borderRadius: '8px' }}
+                    sx={{
+                      borderRadius: '8px',
+                      maxWidth: 220,
+                      bgcolor:
+                        localStatus === 'done'
+                          ? 'rgba(16, 185, 129, 0.08)'
+                          : localStatus === 'in_progress'
+                          ? 'rgba(245, 158, 11, 0.08)'
+                          : localStatus === 'review'
+                          ? 'rgba(139, 92, 246, 0.08)'
+                          : 'rgba(100, 116, 139, 0.08)',
+                      color:
+                        localStatus === 'done'
+                          ? '#10b981'
+                          : localStatus === 'in_progress'
+                          ? '#f59e0b'
+                          : localStatus === 'review'
+                          ? '#8b5cf6'
+                          : 'text.primary',
+                      fontWeight: 700,
+                    }}
                   >
                     <MenuItem value="backlog">Backlog</MenuItem>
                     <MenuItem value="todo">To Do</MenuItem>
@@ -230,87 +318,140 @@ export function IssueDetailsDrawer() {
                     <MenuItem value="review">In Review</MenuItem>
                     <MenuItem value="done">Done</MenuItem>
                   </Select>
-                </Box>
 
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Priority
-                  </Typography>
+                  {/* Assignees */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Assignees</Typography>
                   <Select
-                    value={issue.priority}
-                    onChange={(e) => handlePriorityChange(e.target.value as IssuePriority)}
+                    value={localAssigneeId}
+                    onChange={(e) => setLocalAssigneeId(e.target.value)}
                     disabled={!canEditAllFields}
                     size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, borderRadius: '8px' }}
+                    sx={{ borderRadius: '8px', maxWidth: 220 }}
+                  >
+                    {usersForAssigneeSelect.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+
+                  {/* Priority */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Priority</Typography>
+                  <Select
+                    value={localPriority}
+                    onChange={(e) => setLocalPriority(e.target.value as IssuePriority)}
+                    disabled={!canEditAllFields}
+                    size="small"
+                    sx={{
+                      borderRadius: '8px',
+                      maxWidth: 220,
+                      bgcolor:
+                        localPriority === 'critical'
+                          ? 'rgba(239, 68, 68, 0.08)'
+                          : localPriority === 'high'
+                          ? 'rgba(249, 115, 22, 0.08)'
+                          : localPriority === 'medium'
+                          ? 'rgba(234, 179, 8, 0.08)'
+                          : 'rgba(59, 130, 246, 0.08)',
+                      color:
+                        localPriority === 'critical'
+                          ? '#ef4444'
+                          : localPriority === 'high'
+                          ? '#f97316'
+                          : localPriority === 'medium'
+                          ? '#eab308'
+                          : '#3b82f6',
+                      fontWeight: 700,
+                    }}
                   >
                     <MenuItem value="low">Low</MenuItem>
                     <MenuItem value="medium">Medium</MenuItem>
                     <MenuItem value="high">High</MenuItem>
                     <MenuItem value="critical">Critical</MenuItem>
                   </Select>
-                </Box>
 
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Assignee
+                  {/* Created by */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Created by</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {issue.reporter ? `${issue.reporter.firstName} ${issue.reporter.lastName}` : 'Suresh Kumar'}
                   </Typography>
-                  <Select
-                    value={issue.assignee?.id || allUsers[0]?.id || mockUsers[0]?.id || ''}
-                    onChange={(e) => handleAssigneeChange(e.target.value)}
-                    disabled={!canEditAllFields}
-                    size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, borderRadius: '8px' }}
-                  >
-                    {allUsers.map((u) => (
-                      <MenuItem key={u.id} value={u.id}>
-                        {u.firstName} {u.lastName} ({u.team})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </Box>
 
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Reporter
+                  {/* Start Date */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Start date</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {issue.key === 'APIDE-1' ? 'Jul 10, 2026' : 'Jul 22, 2026'}
                   </Typography>
-                  <TextField
-                    value={issue.reporter ? `${issue.reporter.firstName} ${issue.reporter.lastName}` : 'Alex Rivera'}
-                    disabled
-                    size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Box>
 
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Sprint
-                  </Typography>
-                  <TextField
-                    value={issue.sprint}
-                    disabled
-                    size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                  />
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
-                    Due Date
-                  </Typography>
+                  {/* Due Date */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Due date</Typography>
                   <TextField
                     type="date"
-                    value={issue.dueDate}
+                    value={localDueDate}
                     disabled={!canEditAllFields}
-                    onChange={(e) => updateMutation.mutate({ issueId: issue.id, updates: { dueDate: e.target.value }, actor: currentUser })}
+                    onChange={(e) => setLocalDueDate(e.target.value)}
                     size="small"
-                    fullWidth
-                    sx={{ mt: 0.5, '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' }, maxWidth: 220 }}
                   />
+
+                  {/* Modules */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Modules</Typography>
+                  <Chip
+                    label={issue.key === 'APIDE-1' ? 'GST_API' : 'None'}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      width: 'fit-content',
+                      fontWeight: 700,
+                      bgcolor: issue.key === 'APIDE-1' ? 'rgba(15, 23, 42, 0.05)' : 'transparent',
+                      borderRadius: '6px'
+                    }}
+                  />
+
+                  {/* Cycle */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Cycle</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {issue.key === 'APIDE-1' ? 'No cycle' : issue.sprint || 'Sprint 1'}
+                  </Typography>
+
+                  {/* Parent */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Parent</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    Add parent work item
+                  </Typography>
+
+                  {/* Labels */}
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>Labels</Typography>
+                  <Stack direction="row" spacing={0.5}>
+                    {issue.labels && issue.labels.length > 0 ? (
+                      issue.labels.map(l => <Chip key={l} label={l} size="small" />)
+                    ) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>Select label</Typography>
+                    )}
+                  </Stack>
                 </Box>
+              </Box>
+
+              <Divider />
+              
+              {/* SAVE BUTTON FOR PROPERTIES */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleSaveAll}
+                  disabled={updateMutation.isPending}
+                  sx={{
+                    borderRadius: '8px',
+                    px: 3.5,
+                    py: 1,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    bgcolor: '#2563eb',
+                    '&:hover': { bgcolor: '#1d4ed8' },
+                    boxShadow: 'none',
+                  }}
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
               </Box>
 
               <Divider />

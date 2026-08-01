@@ -1,6 +1,8 @@
 import { issueRepository } from '../repositories/issue.repository.js';
 import { BadRequestError, NotFoundError } from '../utils/AppError.js';
 import type { IIssueAttachment, IIssueChecklistItem, IIssueComment } from '../models/Issue.model.js';
+import { projectRepository } from '../repositories/project.repository.js';
+import { notificationService } from './notification.service.js';
 
 export type IssueCreateInput = {
   projectId: string;
@@ -73,6 +75,32 @@ export const issueService = {
     if (!issue) {
       throw new NotFoundError('Issue not found');
     }
+
+    try {
+      const project = await projectRepository.findById(issue.projectId.toString());
+      if (project) {
+        const titleText = `Board card status moved to ${updates.status?.toUpperCase() || 'UPDATED'}`;
+        const messageText = `Issue ${issue.key} was moved or updated to: ${updates.status || 'updated'}.`;
+
+        if (project.members && project.members.length > 0) {
+          for (const m of project.members) {
+            if (m.projectRole === 'Project Admin' || m.role === 'owner') {
+              await notificationService.createNotification({
+                userId: m.userId.toString(),
+                type: 'issue_updated',
+                title: titleText,
+                message: messageText,
+                relatedEntityId: issue._id.toString(),
+                relatedEntityType: 'issue',
+              });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to dispatch backend update notification:', err);
+    }
+
     return issue;
   },
 

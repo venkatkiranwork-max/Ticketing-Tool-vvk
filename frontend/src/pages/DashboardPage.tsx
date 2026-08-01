@@ -25,6 +25,8 @@ import { RecentIssuesList } from '@/features/dashboard/components/RecentIssuesLi
 import { PriorityBreakdown } from '@/features/dashboard/components/PriorityBreakdown';
 import { UpcomingDeadlines } from '@/features/dashboard/components/UpcomingDeadlines';
 import { ProjectOverviewCard } from '@/features/dashboard/components/ProjectOverviewCard';
+import { SprintProgressChart } from '@/features/dashboard/components/SprintProgressChart';
+import { IssueDistributionChart } from '@/features/dashboard/components/IssueDistributionChart';
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -92,6 +94,8 @@ export function DashboardPage() {
 
   const {
     stats,
+    sprintProgress,
+    issueDistribution,
     priorityBreakdown,
     recentIssues,
     upcomingDeadlines,
@@ -148,7 +152,7 @@ export function DashboardPage() {
 
         {/* Middle Row */}
         <Grid container spacing={2.5}>
-          {/* <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <SprintProgressChart
               sprintName="Sprint 24"
               startDate="Jul 22"
@@ -158,10 +162,10 @@ export function DashboardPage() {
               todo={sprintProgress.todo}
               total={sprintProgress.total}
             />
-          </Grid> */}
-          {/* <Grid size={{ xs: 12, md: 4 }}>
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
             <IssueDistributionChart distribution={issueDistribution} />
-          </Grid> */}
+          </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <ActivityFeed activities={recentActivity} />
           </Grid>

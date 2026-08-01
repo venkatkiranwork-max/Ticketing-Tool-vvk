@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { NotificationItem } from '@/components/ui/NotificationItem';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { mockNotifications } from '@/mock/notifications';
+import { mockNotifications, saveNotifications } from '@/mock/notifications';
 import type { MockNotification } from '@/mock/notifications';
 
 export function NotificationCenterPage() {
@@ -22,17 +22,31 @@ export function NotificationCenterPage() {
   });
 
   const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    mockNotifications.forEach((n) => {
+      n.isRead = true;
+    });
+    saveNotifications();
+    setNotifications([...mockNotifications]);
     toast.success('All notifications marked as read');
   };
 
   const handleMarkRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    const found = mockNotifications.find((n) => n.id === id || n._id === id);
+    if (found) {
+      found.isRead = true;
+      saveNotifications();
+      setNotifications([...mockNotifications]);
+    }
   };
 
   const handleDelete = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    toast.success('Notification deleted');
+    const idx = mockNotifications.findIndex((n) => n.id === id || n._id === id);
+    if (idx !== -1) {
+      mockNotifications.splice(idx, 1);
+      saveNotifications();
+      setNotifications([...mockNotifications]);
+      toast.success('Notification deleted');
+    }
   };
 
   return (

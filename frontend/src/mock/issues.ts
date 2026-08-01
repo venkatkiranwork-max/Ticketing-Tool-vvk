@@ -65,6 +65,56 @@ export interface MockIssue {
 
 const INITIAL_MOCK_ISSUES: MockIssue[] = [
   {
+    _id: 'iss-apide-1',
+    id: 'iss-apide-1',
+    key: 'APIDE-1',
+    title: 'GSTR1 APIs integration',
+    description: 'GSTR1 APIs integration',
+    type: 'task',
+    status: 'in_progress',
+    priority: 'high',
+    assignee: mockUsers[3],
+    reporter: mockUsers[4],
+    projectId: 'prj-2',
+    projectName: 'API_Dev',
+    workspaceId: 'ws-1',
+    sprint: 'Sprint 1',
+    dueDate: '2026-07-31',
+    labels: [],
+    storyPoints: 5,
+    checklist: [],
+    comments: [],
+    attachments: [],
+    history: [
+      {
+        id: 'act-1',
+        timestamp: '2026-07-24T10:00:00Z',
+        timeAgo: '8 days ago',
+        actor: mockUsers[4],
+        action: 'CREATE',
+        details: 'created the work item. 8 days ago'
+      },
+      {
+        id: 'act-2',
+        timestamp: '2026-07-24T10:05:00Z',
+        timeAgo: '8 days ago',
+        actor: mockUsers[4],
+        action: 'ADD_MODULE',
+        details: 'added this work item to the module GST_API. 8 days ago'
+      },
+      {
+        id: 'act-3',
+        timestamp: '2026-07-24T10:10:00Z',
+        timeAgo: '8 days ago',
+        actor: mockUsers[4],
+        action: 'ADD_ASSIGNEE',
+        details: 'added a new assignee V Venkatkiran. 8 days ago'
+      }
+    ],
+    createdAt: '2026-07-24T10:00:00Z',
+    updatedAt: '2026-08-01T10:00:00Z',
+  },
+  {
     _id: 'iss-1',
     id: 'iss-1',
     key: 'ENG-101',

@@ -6,7 +6,7 @@ import { AuditLog } from '../models/AuditLog.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 
-export const getDashboardSummary = asyncHandler(async (req: Request, res: Response) => {
+export const getDashboardSummary = asyncHandler(async (_req: Request, res: Response) => {
   const [
     totalUsers,
     totalProjects,

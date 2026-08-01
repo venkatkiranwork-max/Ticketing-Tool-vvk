@@ -1,13 +1,40 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { mockIssues, type MockIssue, type IssueCommentItem, type IssueAttachmentItem, type IssueChecklistItem } from '@/mock/issues';
-import { mockUsers, type MockUser } from '@/mock/users';
+import { addMockNotification, saveNotifications } from '@/mock/notifications';
+import { mockUsers, type MockUser, toMockUser } from '@/mock/users';
+import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { USE_MOCK_DATA } from '@/mock/config';
 import { issueService } from '@/services/issueService';
 
 // In-memory reactive store backing TanStack Query for demo/local operations
 let localIssuesState: MockIssue[] = [...mockIssues];
+
+const notifyProjectManagers = (actor: MockUser, action: string, message: string, targetKey?: string) => {
+  const managers = mockUsers.filter((u) => u.role === 'Project Manager');
+  managers.forEach((pm) => {
+    addMockNotification({
+      type: 'issue_updated',
+      title: pm.id === actor.id ? `${action} (Self)` : action,
+      message,
+      sender: actor,
+      targetKey,
+    });
+  });
+};
+
+const notifyAssignee = (actor: MockUser, assignee: MockUser, title: string, message: string, targetKey?: string) => {
+  if (assignee.id !== actor.id) {
+    addMockNotification({
+      type: 'issue_assigned',
+      title,
+      message,
+      sender: actor,
+      targetKey,
+    });
+  }
+};
 
 export function useIssuesQuery(projectId?: string) {
   return useQuery({
@@ -50,7 +77,6 @@ export function useIssueDetailsQuery(issueId: string | null) {
 
 export function useCreateIssueMutation() {
   const queryClient = useQueryClient();
-  const addNotification = useNotificationStore((s) => s.addNotification);
 
   return useMutation({
     mutationFn: async (input: {
@@ -132,17 +158,22 @@ export function useCreateIssueMutation() {
 
       localIssuesState = [newIssue, ...localIssuesState];
 
-      // Automatically push notification if assigned to another user
-      if (assigneeUser.id !== input.reporter.id) {
-        addNotification({
-          userId: assigneeUser.id,
-          type: 'issue_assigned',
-          title: 'Issue Assigned',
-          message: `${input.reporter.firstName} ${input.reporter.lastName} assigned ${newKey} to you.`,
-          relatedEntityId: newId,
-          relatedEntityType: 'issue',
-        });
+      // Automatically push persistent mock notifications
+      if (input.reporter.role === 'Member') {
+        notifyProjectManagers(
+          input.reporter,
+          'New Issue Created',
+          `Member ${input.reporter.firstName} created issue ${newKey}: "${input.title}".`,
+          newKey
+        );
       }
+      notifyAssignee(
+        input.reporter,
+        assigneeUser,
+        'Issue Assigned to You',
+        `${input.reporter.firstName} assigned ${newKey} to you.`,
+        newKey
+      );
 
       return newIssue;
     },
@@ -170,7 +201,7 @@ export function useUpdateIssueMutation() {
       actor?: MockUser;
     }) => {
       if (!USE_MOCK_DATA) {
-        const updated = await issueService.updateIssueStatus(issueId, updates.status || 'todo');
+        const updated = await issueService.updateIssue(issueId, updates);
         return updated;
       }
 
@@ -206,6 +237,11 @@ export function useUpdateIssueMutation() {
         });
       });
 
+      queryClient.setQueryData<MockIssue | null>(['issue', issueId], (old) => {
+        if (!old) return old;
+        return { ...old, ...updates, updatedAt: new Date().toISOString() };
+      });
+
       return { previousQueries };
     },
     onError: (err: any, _vars, context) => {
@@ -217,8 +253,100 @@ export function useUpdateIssueMutation() {
       const msg = err?.response?.data?.message || err?.message || 'Failed to update status';
       toast.error(msg);
     },
-    onSettled: () => {
+    onSuccess: (data, variables) => {
+      if (!data) return;
+
+      const actor = variables.actor || mockUsers[0];
+
+      // 1. If Status Changed
+      if (variables.updates.status) {
+        if (actor.role === 'Member') {
+          notifyProjectManagers(
+            actor,
+            'Board Status Moved',
+            `Member ${actor.firstName} moved issue ${data.key} (${data.title}) to ${variables.updates.status.toUpperCase().replace('_', ' ')}.`,
+            data.key
+          );
+        }
+        if (data.assignee) {
+          notifyAssignee(
+            actor,
+            data.assignee,
+            'Issue Status Updated',
+            `Issue ${data.key} status was updated to ${variables.updates.status.toUpperCase().replace('_', ' ')} by ${actor.firstName}.`,
+            data.key
+          );
+        }
+      }
+
+      // 2. If Assignee Changed
+      if (variables.updates.assignee) {
+        notifyAssignee(
+          actor,
+          variables.updates.assignee,
+          'New Issue Assigned to You',
+          `${actor.firstName} assigned ${data.key} "${data.title}" to you.`,
+          data.key
+        );
+        if (actor.role === 'Member') {
+          notifyProjectManagers(
+            actor,
+            'Issue Reassigned',
+            `Member ${actor.firstName} reassigned issue ${data.key} to ${variables.updates.assignee.firstName}.`,
+            data.key
+          );
+        }
+      }
+
+      // 3. If Priority Changed
+      if (variables.updates.priority) {
+        if (actor.role === 'Member') {
+          notifyProjectManagers(
+            actor,
+            'Priority Updated',
+            `Member ${actor.firstName} updated priority of issue ${data.key} to ${variables.updates.priority.toUpperCase()}.`,
+            data.key
+          );
+        }
+        if (data.assignee) {
+          notifyAssignee(
+            actor,
+            data.assignee,
+            'Issue Priority Changed',
+            `Issue ${data.key} priority was changed to ${variables.updates.priority.toUpperCase()} by ${actor.firstName}.`,
+            data.key
+          );
+        }
+      }
+
+      // 4. If Description Changed
+      if (variables.updates.description) {
+        if (actor.role === 'Member') {
+          notifyProjectManagers(
+            actor,
+            'Description Updated',
+            `Member ${actor.firstName} updated the description of issue ${data.key}.`,
+            data.key
+          );
+        }
+        if (data.assignee) {
+          notifyAssignee(
+            actor,
+            data.assignee,
+            'Issue Description Updated',
+            `Issue ${data.key} description was updated by ${actor.firstName}.`,
+            data.key
+          );
+        }
+      }
+
+      // Always save notifications to localStorage so they persist across refreshes!
+      saveNotifications();
+      toast.success('Project stakeholders notified of updates!');
+    },
+    onSettled: (_data, _error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      queryClient.invalidateQueries({ queryKey: ['issue', variables.issueId] });
     },
   });
 }
@@ -236,8 +364,22 @@ export function useDeleteIssueMutation() {
       localIssuesState = localIssuesState.filter((i) => i.id !== issueId && i._id !== issueId);
       return issueId;
     },
-    onSuccess: () => {
+    onSuccess: (issueId) => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
+      
+      try {
+        const actor = toMockUser(useAuthStore.getState().user);
+        if (actor && actor.role === 'Member') {
+          notifyProjectManagers(
+            actor,
+            'Issue Deleted',
+            `Member ${actor.firstName} deleted issue ID: ${issueId}.`
+          );
+          saveNotifications();
+        }
+      } catch (err) {
+        console.error('Failed to dispatch delete notification:', err);
+      }
       toast.success('Issue deleted');
     },
     onError: (err: any) => {
@@ -250,7 +392,6 @@ export function useDeleteIssueMutation() {
 // Comments mutation hook
 export function useCommentMutations(issueId: string | null) {
   const queryClient = useQueryClient();
-  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const addComment = useMutation({
     mutationFn: async ({ text, actor }: { text: string; actor: MockUser }) => {
@@ -279,16 +420,25 @@ export function useCommentMutations(issueId: string | null) {
             ...(iss.history || []),
           ];
 
-          if (iss.assignee?.id && iss.assignee.id !== actor.id) {
-            addNotification({
-              userId: iss.assignee.id,
-              type: 'comment_added',
-              title: 'New Comment',
-              message: `${actor.firstName} commented on ${iss.key}.`,
-              relatedEntityId: iss.id,
-              relatedEntityType: 'issue',
-            });
+          // Notify assignee and project managers dynamically
+          if (iss.assignee) {
+            notifyAssignee(
+              actor,
+              iss.assignee,
+              'New Comment Added',
+              `${actor.firstName} commented on ${iss.key}: "${text.slice(0, 40)}..."`,
+              iss.key
+            );
           }
+          if (actor.role === 'Member') {
+            notifyProjectManagers(
+              actor,
+              'New Comment Added',
+              `Member ${actor.firstName} commented on ${iss.key}: "${text.slice(0, 40)}..."`,
+              iss.key
+            );
+          }
+          saveNotifications();
 
           return { ...iss, comments, history, updatedAt: new Date().toISOString() };
         }

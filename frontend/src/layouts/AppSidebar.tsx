@@ -44,6 +44,12 @@ import { mockUsers, type MockUser } from '@/mock/users';
 import { getNavigationForUser } from '@/features/auth/permissions';
 import { USE_MOCK_DATA } from '@/mock/config';
 import toast from 'react-hot-toast';
+import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import TonalityOutlinedIcon from '@mui/icons-material/TonalityOutlined';
+import { mockProjects } from '@/mock/projects';
+import { filterProjectsForUser } from '@/features/auth/permissions';
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -63,8 +69,10 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
 
   const unreadCount = mockNotifications.filter((n) => !n.isRead).length;
   const userNavDefs = getNavigationForUser(currentUser as any);
+  const userProjects = filterProjectsForUser(mockProjects, currentUser as any);
 
   const [personaAnchorEl, setPersonaAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedSubMenu, setSelectedSubMenu] = useState<string>('Cycles');
 
   const isDark = mode === 'dark';
 
@@ -292,6 +300,109 @@ export function AppSidebar({ collapsed, onToggleCollapse, onMobileClose }: AppSi
                   )}
                 </ListItemButton>
               </Tooltip>
+            );
+          })}
+        </List>
+
+        <Divider sx={{ my: 1.5, mx: collapsed ? 1 : 2, borderColor: sidebarBorder }} />
+
+        {/* Projects Section */}
+        {!collapsed && (
+          <Box sx={{ px: 2, pb: 1 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 700,
+                color: textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                fontSize: '0.68rem',
+              }}
+            >
+              Projects
+            </Typography>
+          </Box>
+        )}
+
+        <List disablePadding sx={{ px: collapsed ? 0.75 : 1.25, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {userProjects.map((p) => {
+            return (
+              <Box key={p.id} sx={{ mb: 1 }}>
+                {/* Project Header Row */}
+                <ListItemButton
+                  onClick={() => {
+                    navigate(ROUTES.PROJECTS);
+                  }}
+                  sx={{
+                    borderRadius: '8px',
+                    minHeight: 36,
+                    px: collapsed ? 1.25 : 1.5,
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    color: textPrimary,
+                    '&:hover': { bgcolor: hoverBg },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: collapsed ? 0 : 32, color: activeColor, justifyContent: 'center' }}>
+                    <FolderOutlinedIcon fontSize="small" />
+                  </ListItemIcon>
+                  {!collapsed && (
+                    <ListItemText
+                      primary={
+                        <Typography variant="body2" sx={{ fontSize: '0.82rem', fontWeight: 700 }}>
+                          {p.name}
+                        </Typography>
+                      }
+                    />
+                  )}
+                </ListItemButton>
+
+                {/* Sub items (Only if not collapsed) */}
+                {!collapsed && (
+                  <List disablePadding sx={{ pl: 3.5, mt: 0.25, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                    {[
+                      { label: 'Work items', icon: <AssignmentOutlinedIcon sx={{ fontSize: '0.85rem' }} /> },
+                      { label: 'Cycles', icon: <TonalityOutlinedIcon sx={{ fontSize: '0.85rem' }} /> },
+                      { label: 'Modules', icon: <ViewModuleOutlinedIcon sx={{ fontSize: '0.85rem' }} /> },
+                      { label: 'Views', icon: <CalendarMonthOutlinedIcon sx={{ fontSize: '0.85rem' }} /> },
+                      { label: 'Pages', icon: <DescriptionOutlinedIcon sx={{ fontSize: '0.85rem' }} /> },
+                    ].map((subItem) => {
+                      const isSubActive = selectedSubMenu === subItem.label;
+                      return (
+                        <ListItemButton
+                          key={subItem.label}
+                          onClick={() => {
+                            setSelectedSubMenu(subItem.label);
+                            navigate(ROUTES.PROJECTS);
+                          }}
+                          sx={{
+                            borderRadius: '6px',
+                            minHeight: 28,
+                            py: 0.25,
+                            px: 1,
+                            color: isSubActive ? activeColor : textMuted,
+                            bgcolor: isSubActive ? activeBg : 'transparent',
+                            '&:hover': {
+                              color: isSubActive ? activeColor : textPrimary,
+                              bgcolor: isSubActive ? activeBg : hoverBg,
+                            },
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 20, color: 'inherit', display: 'flex', alignItems: 'center' }}>
+                            {subItem.icon}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Typography variant="body2" sx={{ fontSize: '0.78rem', fontWeight: 500 }}>
+                                {subItem.label}
+                              </Typography>
+                            }
+                          />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                )}
+              </Box>
             );
           })}
         </List>

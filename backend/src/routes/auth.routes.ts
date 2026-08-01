@@ -27,7 +27,7 @@ router.get('/me', authenticate, authController.me);
 router.get(
   '/admin/ping',
   authenticate,
-  authorize('Super Admin', 'Admin', 'super_admin', 'admin'),
+  authorize('Super Admin', 'super_admin'),
   (_req, res) => sendSuccess(res, { ok: true }, 'Admin access granted'),
 );
 

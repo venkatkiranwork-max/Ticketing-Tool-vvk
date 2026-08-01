@@ -190,7 +190,7 @@ export function LoginPage() {
               <Chip label="Project Manager" size="small" color="success" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
             </Button>
 
-            {/* Account 3: Mani (PM) */}
+            {/* Account 3: Mani (Member) */}
             <Button
               variant="outlined"
               size="small"
@@ -201,16 +201,16 @@ export function LoginPage() {
                 textTransform: 'none',
                 justify: 'space-between',
                 borderRadius: '10px',
-                borderColor: 'rgba(16, 185, 129, 0.25)',
-                background: 'rgba(16, 185, 129, 0.05)',
+                borderColor: 'rgba(59, 130, 246, 0.25)',
+                background: 'rgba(59, 130, 246, 0.05)',
                 '&:hover': {
-                  borderColor: 'success.main',
-                  background: 'rgba(16, 185, 129, 0.15)',
+                  borderColor: 'primary.main',
+                  background: 'rgba(59, 130, 246, 0.15)',
                 },
               }}
             >
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem', bgcolor: '#10b981', fontWeight: 800 }}>M</Avatar>
+                <Avatar sx={{ width: 24, height: 24, fontSize: '0.7rem', bgcolor: '#3b82f6', fontWeight: 800 }}>M</Avatar>
                 <Box sx={{ textAlign: 'left' }}>
                   <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>
                     Mani Verma
@@ -220,7 +220,7 @@ export function LoginPage() {
                   </Typography>
                 </Box>
               </Stack>
-              <Chip label="Project Manager" size="small" color="success" variant="outlined" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
+              <Chip label="Member" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 800 }} />
             </Button>
           </Stack>
         </Paper>

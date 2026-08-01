@@ -67,6 +67,7 @@ export function ProjectPage() {
   const { data: issues = [] } = useIssuesQuery();
   const { data: serverProjects, createProject: createProjectApi, updateProject: updateProjectApi, archiveProject: archiveProjectApi } = useProjectsQuery();
   const { data: allUsers = [] } = useUsersQuery();
+  const usersForSelect = allUsers.length > 0 ? allUsers : mockUsers;
   const [localProjectsState, setLocalProjectsState] = useState<MockProject[]>(mockProjects);
 
   useEffect(() => {
@@ -132,11 +133,10 @@ export function ProjectPage() {
       const matchesTeam = teamFilter === 'all' || p.team === teamFilter;
 
       if (catalogTab === 'my') {
-        const isManagedByMe = p.members?.some((m: any) =>
-          (m?.user?.id === currentUser?.id || m?.userId === currentUser?.id) &&
-          (m?.projectRole === 'Project Admin' || m?.projectRole === 'Lead Developer' || m?.role === 'owner')
+        const isMember = p.members?.some((m: any) =>
+          (m?.user?.id === currentUser?.id || m?.userId === currentUser?.id)
         );
-        return matchesSearch && matchesTeam && (isManagedByMe || currentUser.role === 'Super Admin' || (currentUser.role as string) === 'super_admin');
+        return matchesSearch && matchesTeam && p.status !== 'completed' && (isMember || currentUser.role === 'Super Admin' || (currentUser.role as string) === 'super_admin');
       }
 
       if (catalogTab === 'archived') {
@@ -214,7 +214,7 @@ export function ProjectPage() {
     }
 
     const selectedUserObjects = selectedUserIds.map(
-      (id) => allUsers.find((u) => u.id === id) || mockUsers.find((u) => u.id === id) || mockUsers[0]
+      (id) => usersForSelect.find((u) => u.id === id) || mockUsers.find((u) => u.id === id) || mockUsers[0]
     );
 
     const newMembers: ProjectMember[] = selectedUserObjects.map((u) => ({
@@ -654,15 +654,15 @@ export function ProjectPage() {
               multiple
               value={selectedUserIds}
               onChange={(e) => {
-                const val = e.target.value as string[];
-                setSelectedUserIds(val.filter((v) => typeof v === 'string' && v.length > 0));
+                const value = e.target.value;
+                setSelectedUserIds(typeof value === 'string' ? value.split(',') : value);
               }}
               input={<OutlinedInput label="Select Users" />}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {(selected as string[]).map((value) => {
                     const u =
-                      allUsers.find((user) => user.id === value) ||
+                      usersForSelect.find((user) => user.id === value) ||
                       mockUsers.find((user) => user.id === value);
                     return (
                       <Chip
@@ -674,28 +674,17 @@ export function ProjectPage() {
                   })}
                 </Box>
               )}
-
+              label="Select Users"
             >
-              {allUsers.length === 0 ? (
+              {usersForSelect.length === 0 ? (
                 <MenuItem disabled value="">No users available</MenuItem>
               ) : (
-                allUsers
+                usersForSelect
                   .filter((u) => u.id && u.id.length > 0)
                   .map((u) => {
                     const isSelected = selectedUserIds.includes(u.id);
                     return (
-                      <MenuItem
-                        key={u.id}
-                        value={u.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedUserIds((prev) =>
-                            isSelected
-                              ? prev.filter((id) => id !== u.id)
-                              : [...prev, u.id]
-                          );
-                        }}
-                      >
+                      <MenuItem key={u.id} value={u.id} selected={isSelected}>
                         <Checkbox checked={isSelected} />
                         <Avatar
                           src={u.avatarUrl}

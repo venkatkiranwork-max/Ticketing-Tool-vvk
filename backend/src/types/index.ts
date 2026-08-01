@@ -35,14 +35,12 @@ export type JwtPayload = {
 
 export type UserRole =
   | 'Super Admin'
-  | 'Admin'
   | 'Project Manager'
   | 'Team Lead'
   | 'Member'
   | 'Viewer'
   | 'Guest'
   | 'super_admin'
-  | 'admin'
   | 'member'
   | 'viewer';
 

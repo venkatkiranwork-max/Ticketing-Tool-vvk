@@ -2,6 +2,8 @@ import { apiClient } from '@/api/client';
 import { USE_MOCK_DATA } from '@/mock/config';
 import { mockProjects, saveProjectsToStorage } from '@/mock/projects';
 import type { MockProject } from '@/mock/projects';
+import { useAuthStore } from '@/store/authStore';
+import { toMockUser } from '@/mock/users';
 
 export const projectService = {
   async getProjects(): Promise<MockProject[]> {
@@ -15,6 +17,7 @@ export const projectService = {
 
   async createProject(data: Partial<MockProject>): Promise<MockProject> {
     if (USE_MOCK_DATA) {
+      const currentUser = toMockUser(useAuthStore.getState().user);
       const newProj: MockProject = {
         _id: `prj-${Date.now()}`,
         id: `prj-${Date.now()}`,
@@ -28,7 +31,7 @@ export const projectService = {
         openIssuesCount: 0,
         completedIssueCount: 0,
         issueCount: 0,
-        members: [],
+        members: currentUser ? [{ user: currentUser, projectRole: 'Project Admin' }] : [],
         status: 'active',
         lastUpdated: 'Just now',
       };

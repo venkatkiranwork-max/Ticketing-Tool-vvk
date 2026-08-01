@@ -90,6 +90,28 @@ export const issueService = {
     };
   },
 
+  async updateIssue(id: string, updates: Partial<MockIssue>): Promise<MockIssue> {
+    if (USE_MOCK_DATA) {
+      const idx = mockIssues.findIndex((i) => i.id === id || i._id === id);
+      if (idx !== -1) {
+        mockIssues[idx] = {
+          ...mockIssues[idx],
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        } as MockIssue;
+        return mockIssues[idx];
+      }
+      return mockIssues[0];
+    }
+    const res = (await apiClient.patch(`/issues/${id}`, updates)) as any;
+    const updated = res?.data || res;
+    return {
+      ...updated,
+      id: updated.id || updated._id,
+      assignee: updated.assignee || mockUsers[0],
+    };
+  },
+
   async deleteIssue(id: string): Promise<void> {
     if (USE_MOCK_DATA) {
       const idx = mockIssues.findIndex((i) => i.id === id || i._id === id);

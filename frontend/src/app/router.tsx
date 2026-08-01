@@ -1,23 +1,32 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { RootLayout } from '@/layouts/RootLayout';
-import { HomePage } from '@/pages/HomePage';
-import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
-import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
-import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { WorkspacePage } from '@/pages/WorkspacePage';
-import { ProjectPage } from '@/pages/ProjectPage';
-import { TeamsPage } from '@/pages/TeamsPage';
-import { UsersPage } from '@/pages/UsersPage';
-import { IssuesPage } from '@/pages/IssuesPage';
-import { KanbanPage } from '@/pages/KanbanPage';
-import { ReportsPage } from '@/pages/ReportsPage';
-import { AuditLogsPage } from '@/pages/AuditLogsPage';
-import { NotificationCenterPage } from '@/pages/NotificationCenterPage';
-import { ProfilePage } from '@/pages/ProfilePage';
-import { SettingsPage } from '@/pages/SettingsPage';
-import { AdministrationPage } from '@/pages/AdministrationPage';
+import { lazy, Suspense } from 'react';
+import { CircularProgress, Box } from '@mui/material';
+
+const PageLoader = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', width: '100%' }}>
+    <CircularProgress />
+  </Box>
+);
+
+const HomePage = lazy(() => import('@/pages/HomePage').then(m => ({ default: m.HomePage })));
+const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('@/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const WorkspacePage = lazy(() => import('@/pages/WorkspacePage').then(m => ({ default: m.WorkspacePage })));
+const ProjectPage = lazy(() => import('@/pages/ProjectPage').then(m => ({ default: m.ProjectPage })));
+const TeamsPage = lazy(() => import('@/pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
+const UsersPage = lazy(() => import('@/pages/UsersPage').then(m => ({ default: m.UsersPage })));
+const IssuesPage = lazy(() => import('@/pages/IssuesPage').then(m => ({ default: m.IssuesPage })));
+const KanbanPage = lazy(() => import('@/pages/KanbanPage').then(m => ({ default: m.KanbanPage })));
+const ReportsPage = lazy(() => import('@/pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const AuditLogsPage = lazy(() => import('@/pages/AuditLogsPage').then(m => ({ default: m.AuditLogsPage })));
+const NotificationCenterPage = lazy(() => import('@/pages/NotificationCenterPage').then(m => ({ default: m.NotificationCenterPage })));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const AdministrationPage = lazy(() => import('@/pages/AdministrationPage').then(m => ({ default: m.AdministrationPage })));
 import { GuestRoute, ProtectedRoute } from '@/components/routing/ProtectedRoute';
 import { PermissionGuard } from '@/components/routing/PermissionGuard';
 import { ROUTES } from '@/constants';
@@ -25,9 +34,10 @@ import { ROUTES } from '@/constants';
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<RootLayout />}>
-          <Route path={ROUTES.HOME} element={<HomePage />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route element={<RootLayout />}>
+            <Route path={ROUTES.HOME} element={<HomePage />} />
 
           <Route element={<GuestRoute />}>
             <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -142,7 +152,8 @@ export function AppRouter() {
 
           <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
         </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

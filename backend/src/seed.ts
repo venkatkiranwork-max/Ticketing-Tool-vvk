@@ -18,9 +18,8 @@ async function seedDatabase() {
     console.info('MongoDB connected successfully.');
 
     // 1. Clear existing data completely
-    console.info('Deleting all existing users, teams, projects, issues, notifications, workspaces...');
+    console.info('Deleting existing teams, projects, issues, notifications, workspaces (users are preserved)...');
     await Promise.all([
-      User.deleteMany({}),
       Team.deleteMany({}),
       Project.deleteMany({}),
       Issue.deleteMany({}),
@@ -31,11 +30,23 @@ async function seedDatabase() {
     // 2. Hash default password: Password123!
     const hashedPassword = await bcrypt.hash('Password123!', 10);
 
-    // 3. Seed Exactly 3 Users (Suresh, Ravi, Mani)
-    console.info('Seeding 3 Enterprise Users (Suresh - Super Admin, Ravi - Admin, Mani - PM)...');
-    const superAdmin = await User.create({
-      email: 'suresh@gmail.com',
-      passwordHash: hashedPassword,
+    // Helper to get or create user without wiping other users
+    const getOrCreateUser = async (email: string, details: any) => {
+      const existing = await User.findOne({ email: email.toLowerCase() });
+      if (existing) {
+        return existing;
+      }
+      return await User.create({
+        ...details,
+        email: email.toLowerCase(),
+        passwordHash: hashedPassword,
+      });
+    };
+
+    // 3. Seed Exactly 9 Users (1 Super Admin, 2 Project Managers, 6 Members)
+    console.info('Seeding 9 Enterprise Users (Suresh - Super Admin, Ravi/Venkatesh - PMs, 6 Members)...');
+    
+    const superAdmin = await getOrCreateUser('suresh@gmail.com', {
       firstName: 'Suresh',
       lastName: 'Kumar',
       employeeId: 'EMP-1001',
@@ -50,13 +61,11 @@ async function seedDatabase() {
       joinDate: new Date('2024-01-10'),
     });
 
-    const admin = await User.create({
-      email: 'ravi@gmail.com',
-      passwordHash: hashedPassword,
+    const pm1 = await getOrCreateUser('ravi@gmail.com', {
       firstName: 'Ravi',
       lastName: 'Sharma',
       employeeId: 'EMP-1002',
-      role: 'Admin',
+      role: 'Project Manager',
       team: 'UI/UX',
       status: 'Active',
       avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
@@ -67,21 +76,109 @@ async function seedDatabase() {
       joinDate: new Date('2024-02-01'),
     });
 
-    const pm = await User.create({
-      email: 'mani@gmail.com',
-      passwordHash: hashedPassword,
+    const pm2 = await getOrCreateUser('venkatesh.aduri@gmail.com', {
+      firstName: 'venkatesh',
+      lastName: 'aduri',
+      employeeId: 'EMP-1005',
+      role: 'Project Manager',
+      team: 'Engineering',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+      department: 'Engineering',
+      phone: '+91 98765 43214',
+      location: 'Bangalore, IN',
+      bio: 'Enterprise Project Manager leading backends engineering.',
+      joinDate: new Date('2024-04-05'),
+    });
+
+    const mem1 = await getOrCreateUser('mani@gmail.com', {
       firstName: 'Mani',
       lastName: 'Verma',
       employeeId: 'EMP-1003',
-      role: 'Project Manager',
+      role: 'Member',
       team: 'Testing',
       status: 'Active',
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
       department: 'Testing & QA',
       phone: '+91 98765 43212',
       location: 'Hyderabad, IN',
-      bio: 'Lead PM driving quality assurance pipelines, automated testing, and sprint delivery.',
+      bio: 'Lead QA driving quality assurance pipelines, automated testing, and sprint delivery.',
       joinDate: new Date('2024-03-15'),
+    });
+
+    const mem2 = await getOrCreateUser('venkatkiran@gmail.com', {
+      firstName: 'v',
+      lastName: 'venkatkiran',
+      employeeId: 'EMP-1004',
+      role: 'Member',
+      team: 'Engineering',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
+      department: 'Engineering',
+      phone: '+91 98765 43213',
+      location: 'Hyderabad, IN',
+      bio: 'Fullstack developer member specializing in APIs and UI integrations.',
+      joinDate: new Date('2024-04-01'),
+    });
+
+    const mem3 = await getOrCreateUser('sarah@gmail.com', {
+      firstName: 'Sarah',
+      lastName: 'Chen',
+      employeeId: 'EMP-1006',
+      role: 'Member',
+      team: 'Engineering',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
+      department: 'Engineering',
+      phone: '+91 98765 43215',
+      location: 'Bangalore, IN',
+      bio: 'Lead frontend engineer specialized in React, TS and high performance charts.',
+      joinDate: new Date('2024-04-10'),
+    });
+
+    const mem4 = await getOrCreateUser('david@gmail.com', {
+      firstName: 'David',
+      lastName: 'Kim',
+      employeeId: 'EMP-1007',
+      role: 'Member',
+      team: 'IT',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1500048993953-d23a436266cf?w=150&auto=format&fit=crop&q=80',
+      department: 'IT Support',
+      phone: '+91 98765 43216',
+      location: 'Seoul, KR',
+      bio: 'IT Operations specialist managing Sentinel Redis clusters.',
+      joinDate: new Date('2024-04-15'),
+    });
+
+    const mem5 = await getOrCreateUser('elena@gmail.com', {
+      firstName: 'Elena',
+      lastName: 'Rostova',
+      employeeId: 'EMP-1008',
+      role: 'Member',
+      team: 'UI/UX',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+      department: 'UI/UX Design',
+      phone: '+91 98765 43217',
+      location: 'Prague, CZ',
+      bio: 'Figma and visual guidelines designer member.',
+      joinDate: new Date('2024-04-20'),
+    });
+
+    const mem6 = await getOrCreateUser('marcus@gmail.com', {
+      firstName: 'Marcus',
+      lastName: 'Vance',
+      employeeId: 'EMP-1009',
+      role: 'Member',
+      team: 'Testing',
+      status: 'Active',
+      avatarUrl: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+      department: 'Testing & QA',
+      phone: '+91 98765 43218',
+      location: 'Austin, US',
+      bio: 'Integration test suites automated developer.',
+      joinDate: new Date('2024-04-25'),
     });
 
     // 4. Seed Workspace
@@ -93,8 +190,14 @@ async function seedDatabase() {
       ownerId: superAdmin._id,
       members: [
         { userId: superAdmin._id, role: 'owner', joinedAt: new Date() },
-        { userId: admin._id, role: 'admin', joinedAt: new Date() },
-        { userId: pm._id, role: 'member', joinedAt: new Date() },
+        { userId: pm1._id, role: 'admin', joinedAt: new Date() },
+        { userId: pm2._id, role: 'admin', joinedAt: new Date() },
+        { userId: mem1._id, role: 'member', joinedAt: new Date() },
+        { userId: mem2._id, role: 'member', joinedAt: new Date() },
+        { userId: mem3._id, role: 'member', joinedAt: new Date() },
+        { userId: mem4._id, role: 'member', joinedAt: new Date() },
+        { userId: mem5._id, role: 'member', joinedAt: new Date() },
+        { userId: mem6._id, role: 'member', joinedAt: new Date() },
       ],
     });
 
@@ -114,8 +217,8 @@ async function seedDatabase() {
       {
         name: 'UI/UX',
         description: 'Design system primitives, accessibility token guidelines, user interface research, and Figma tokens.',
-        teamLeadId: admin._id.toString(),
-        teamLeadName: `${admin.firstName} ${admin.lastName}`,
+        teamLeadId: pm1._id.toString(),
+        teamLeadName: `${pm1.firstName} ${pm1.lastName}`,
         memberCount: 4,
         projectCount: 2,
         velocity: 35,
@@ -124,8 +227,8 @@ async function seedDatabase() {
       {
         name: 'Testing',
         description: 'End-to-end integration testing, manual QA suites, performance regression, and Playwright automation.',
-        teamLeadId: pm._id.toString(),
-        teamLeadName: `${pm.firstName} ${pm.lastName}`,
+        teamLeadId: mem1._id.toString(),
+        teamLeadName: `${mem1.firstName} ${mem1.lastName}`,
         memberCount: 4,
         projectCount: 2,
         velocity: 38,
@@ -150,15 +253,15 @@ async function seedDatabase() {
           projectRole: 'Project Admin',
         },
         {
-          userId: admin._id,
-          userName: `${admin.firstName} ${admin.lastName}`,
-          userEmail: admin.email,
+          userId: pm1._id,
+          userName: `${pm1.firstName} ${pm1.lastName}`,
+          userEmail: pm1.email,
           projectRole: 'Lead Developer',
         },
         {
-          userId: pm._id,
-          userName: `${pm.firstName} ${pm.lastName}`,
-          userEmail: pm.email,
+          userId: mem1._id,
+          userName: `${mem1.firstName} ${mem1.lastName}`,
+          userEmail: mem1.email,
           projectRole: 'Developer',
         },
       ],
@@ -175,8 +278,8 @@ async function seedDatabase() {
         type: 'story',
         status: 'in_progress',
         priority: 'critical',
-        assigneeId: pm._id,
-        assigneeName: `${pm.firstName} ${pm.lastName}`,
+        assigneeId: mem1._id,
+        assigneeName: `${mem1.firstName} ${mem1.lastName}`,
         reporterId: superAdmin._id,
         reporterName: `${superAdmin.firstName} ${superAdmin.lastName}`,
         projectId: project._id,
@@ -200,8 +303,8 @@ async function seedDatabase() {
         priority: 'high',
         assigneeId: superAdmin._id,
         assigneeName: `${superAdmin.firstName} ${superAdmin.lastName}`,
-        reporterId: admin._id,
-        reporterName: `${admin.firstName} ${admin.lastName}`,
+        reporterId: pm1._id,
+        reporterName: `${pm1.firstName} ${pm1.lastName}`,
         projectId: project._id,
         projectName: project.name,
         workspaceId: workspace._id,
@@ -218,10 +321,16 @@ async function seedDatabase() {
 
     console.info('====================================================');
     console.info('Database seeded successfully!');
-    console.info('Active Accounts Created:');
-    console.info('1. Super Admin: suresh@gmail.com / Password123!');
-    console.info('2. Admin:       ravi@gmail.com / Password123!');
-    console.info('3. PM (Other):  mani@gmail.com / Password123!');
+    console.info('Active Accounts Created (Pass: Password123!):');
+    console.info('1. Super Admin:       suresh@gmail.com');
+    console.info('2. Project Manager 1: ravi@gmail.com');
+    console.info('3. Project Manager 2: venkatesh.aduri@gmail.com');
+    console.info('4. Member 1:          mani@gmail.com');
+    console.info('5. Member 2:          venkatkiran@gmail.com');
+    console.info('6. Member 3:          sarah@gmail.com');
+    console.info('7. Member 4:          david@gmail.com');
+    console.info('8. Member 5:          elena@gmail.com');
+    console.info('9. Member 6:          marcus@gmail.com');
     console.info('====================================================');
   } catch (error) {
     console.error('Error seeding database:', error);
